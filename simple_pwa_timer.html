@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Timer & Abitudini</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Timer">
+    <meta name="description" content="Timer e Tracciatore Abitudini">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Timer%20%26%20Abitudini%22,%22short_name%22:%22Timer%22,%22description%22:%22App%20per%20timer%20e%20abitudini%22,%22start_url%22:%22./%22,%22display%22:%22standalone%22,%22background_color%22:%22%23667eea%22,%22theme_color%22:%22%23667eea%22,%22orientation%22:%22portrait%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20fill='%23667eea'/%3E%3Ctext%20x='50'%20y='60'%20font-size='40'%20text-anchor='middle'%20fill='white'%3E⏰%3C/text%3E%3C/svg%3E%22,%22sizes%22:%22192x192%22,%22type%22:%22image/svg+xml%22}]}">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+            padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .app-title {
+            font-size: 2em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .install-banner {
+            background: rgba(76, 175, 80, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        .install-banner.show {
+            display: block;
+        }
+
+        .install-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            margin: 10px 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .tab-buttons {
+            display: flex;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 4px;
+            margin-bottom: 20px;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Timer Styles */
+        .timer-section {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .timer-display {
+            font-size: 4em;
+            font-weight: 300;
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timer-status {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+
+        .timer-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            margin: 0 10px;
+        }
+
+        .control-group label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        input[type="number"] {
+            width: 70px;
+            padding: 8px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-align: center;
+            font-size: 1em;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            min-height: 44px;
+            font-size: 1em;
+        }
+
+        .btn-primary { background: linear-gradient(45deg, #4CAF50, #45a049); }
+        .btn-secondary { background: linear-gradient(45deg, #2196F3, #1976D2); }
+        .btn-danger { background: linear-gradient(45deg, #f44336, #d32f2f); }
+        .btn-warning { background: linear-gradient(45deg, #ff9800, #f57c00); }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .mode-toggle {
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        /* Tasks Section */
+        .section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .section-title {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .input-row input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 1em;
+        }
+
+        .input-row input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .input-row select {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 1em;
+        }
+
+        .task-list {
+            margin-top: 20px;
+        }
+
+        .task-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .task-item.completed {
+            opacity: 0.6;
+            text-decoration: line-through;
+        }
+
+        .task-content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+        }
+
+        .task-text {
+            flex: 1;
+        }
+
+        .difficulty-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .difficulty-facile { background: #4CAF50; }
+        .difficulty-medio { background: #ff9800; }
+        .difficulty-difficile { background: #f44336; }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #f44336;
+            font-size: 1.2em;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .delete-btn:active {
+            background: rgba(244, 67, 54, 0.2);
+        }
+
+        /* Habits Section */
+        .color-picker {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 15px 0;
+        }
+
+        .color-option {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .color-option.selected {
+            border-color: white;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .color-blue { background: #2196F3; }
+        .color-green { background: #4CAF50; }
+        .color-orange { background: #FF9800; }
+        .color-red { background: #F44336; }
+        .color-purple { background: #9C27B0; }
+        .color-teal { background: #009688; }
+
+        .habit-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .habit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .habit-title {
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .habit-icon {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            margin: 15px 0;
+        }
+
+        .day-cell {
+            aspect-ratio: 1;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+            min-height: 32px;
+        }
+
+        .day-cell.completed {
+            background: var(--habit-color, #2196F3);
+            color: white;
+            border-color: var(--habit-color, #2196F3);
+        }
+
+        .day-cell.future {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .day-cell.today {
+            border-color: #FFD700;
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .stat-label {
+            font-size: 0.7em;
+            opacity: 0.8;
+        }
+
+        .month-nav {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .month-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .current-month {
+            font-weight: bold;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            text-align: center;
+        }
+
+        .notification.show { opacity: 1; }
+        .notification.success { background: linear-gradient(45deg, #4CAF50, #388E3C); }
+        .notification.error { background: linear-gradient(45deg, #f44336, #d32f2f); }
+        .notification.info { background: linear-gradient(45deg, #2196F3, #1976D2); }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            opacity: 0.7;
+        }
+
+        @media (max-width: 480px) {
+            .timer-display {
+                font-size: 3em;
+            }
+            
+            .input-row {
+                flex-direction: column;
+            }
+            
+            .input-row input[type="text"] {
+                min-width: auto;
+            }
+            
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .container {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Install Banner -->
+    <div class="install-banner" id="installBanner">
+        📱 Installa l'app per una migliore esperienza!
+        <br>
+        <button class="install-btn" id="installBtn">Installa</button>
+        <button class="install-btn" id="dismissBtn">✕</button>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1 class="app-title">🏠⏱️ Timer & Abitudini</h1>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-buttons">
+            <button class="tab-button active" data-tab="timer">⏱️ Timer</button>
+            <button class="tab-button" data-tab="habits">🌟 Abitudini</button>
+        </div>
+
+        <!-- Timer Tab -->
+        <div class="tab-content active" id="timer-tab">
+            <div class="timer-section">
+                <div class="timer-status" id="timerStatus">Pronto per iniziare</div>
+                <div class="timer-display" id="timerDisplay">25:00</div>
+                
+                <div class="timer-controls">
+                    <div class="control-group">
+                        <label>Lavoro (min)</label>
+                        <input type="number" id="workTime" value="25" min="1" max="180">
+                    </div>
+                    <div class="control-group">
+                        <label>Riposo (min)</label>
+                        <input type="number" id="restTime" value="5" min="1" max="60">
+                    </div>
+                </div>
+                
+                <div class="timer-controls">
+                    <button class="btn-primary" id="startBtn">▶️ Avvia</button>
+                    <button class="btn-warning" id="pauseBtn" disabled>⏸️ Pausa</button>
+                    <button class="btn-secondary" id="switchBtn" disabled>🔄 Cambia</button>
+                    <button class="btn-danger" id="resetBtn">🔄 Reset</button>
+                </div>
+                
+                <div class="mode-toggle">
+                    <label>
+                        <input type="checkbox" id="manualMode"> Modalità Manuale
+                    </label>
+                </div>
+            </div>
+
+            <!-- Tasks Section -->
+            <div class="section">
+                <h2 class="section-title">📋 Lista Faccende</h2>
+                
+                <div class="input-row">
+                    <input type="text" id="taskInput" placeholder="Inserisci una faccenda...">
+                    <select id="difficultySelect">
+                        <option value="facile">Facile</option>
+                        <option value="medio">Medio</option>
+                        <option value="difficile">Difficile</option>
+                    </select>
+                    <button class="btn-secondary" id="addTaskBtn">➕</button>
+                </div>
+                
+                <div class="task-list" id="tasksList"></div>
+            </div>
+        </div>
+
+        <!-- Habits Tab -->
+        <div class="tab-content" id="habits-tab">
+            <div class="section">
+                <h2 class="section-title">➕ Nuova Abitudine</h2>
+                
+                <div class="input-row">
+                    <input type="text" id="habitInput" placeholder="Es: Bere acqua, Fare esercizio...">
+                    <select id="frequencySelect">
+                        <option value="daily">Quotidiana</option>
+                        <option value="weekly">Settimanale</option>
+                    </select>
+                    <button class="btn-primary" id="addHabitBtn">➕</button>
+                </div>
+                
+                <div class="color-picker">
+                    <div class="color-option color-blue selected" data-color="#2196F3"></div>
+                    <div class="color-option color-green" data-color="#4CAF50"></div>
+                    <div class="color-option color-orange" data-color="#FF9800"></div>
+                    <div class="color-option color-red" data-color="#F44336"></div>
+                    <div class="color-option color-purple" data-color="#9C27B0"></div>
+                    <div class="color-option color-teal" data-color="#009688"></div>
+                </div>
+            </div>
+            
+            <div class="month-nav">
+                <button class="month-btn" id="prevMonthBtn">← Prec</button>
+                <div class="current-month" id="currentMonth"></div>
+                <button class="month-btn" id="nextMonthBtn">Succ →</button>
+            </div>
+            
+            <div id="habitsList"></div>
+        </div>
+    </div>
+
+    <script>
+        // App State
+        let appState = {
+            timer: {
+                isRunning: false,
+                isPaused: false,
+                isWorkTime: true,
+                timeLeft: 1500, // 25 minutes in seconds
+                interval: null,
+                manualMode: false
+            },
+            tasks: JSON.parse(localStorage.getItem('tasks') || '[]'),
+            habits: JSON.parse(localStorage.getItem('habits') || '[]'),
+            selectedColor: '#2196F3',
+            viewDate: new Date(),
+            deferredPrompt: null
+        };
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeApp();
+        });
+
+        function initializeApp() {
+            // Initialize PWA
+            initializePWA();
+            
+            // Initialize Timer
+            initializeTimer();
+            
+            // Initialize Tasks
+            initializeTasks();
+            
+            // Initialize Habits
+            initializeHabits();
+            
+            // Initialize Tabs
+            initializeTabs();
+            
+            // Load saved settings
+            loadSettings();
+            
+            console.log('🎯 App inizializzata correttamente!');
+        }
+
+        // PWA Functions
+        function initializePWA() {
+            // Install prompt
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                appState.deferredPrompt = e;
+                showInstallBanner();
+            });
+
+            // Install button
+            document.getElementById('installBtn').addEventListener('click', installApp);
+            document.getElementById('dismissBtn').addEventListener('click', hideInstallBanner);
+
+            // Show banner after delay if installable
+            setTimeout(() => {
+                if (appState.deferredPrompt && !localStorage.getItem('pwa-dismissed')) {
+                    showInstallBanner();
+                }
+            }, 5000);
+        }
+
+        function showInstallBanner() {
+            if (!localStorage.getItem('pwa-dismissed')) {
+                document.getElementById('installBanner').classList.add('show');
+            }
+        }
+
+        function hideInstallBanner() {
+            document.getElementById('installBanner').classList.remove('show');
+            localStorage.setItem('pwa-dismissed', 'true');
+        }
+
+        async function installApp() {
+            if (!appState.deferredPrompt) return;
+            
+            appState.deferredPrompt.prompt();
+            const { outcome } = await appState.deferredPrompt.userChoice;
+            
+            if (outcome === 'accepted') {
+                showNotification('📱 App installata!', 'success');
+            }
+            
+            appState.deferredPrompt = null;
+            hideInstallBanner();
+        }
+
+        // Timer Functions
+        function initializeTimer() {
+            const elements = {
+                workTime: document.getElementById('workTime'),
+                restTime: document.getElementById('restTime'),
+                startBtn: document.getElementById('startBtn'),
+                pauseBtn: document.getElementById('pauseBtn'),
+                switchBtn: document.getElementById('switchBtn'),
+                resetBtn: document.getElementById('resetBtn'),
+                manualMode: document.getElementById('manualMode'),
+                timerDisplay: document.getElementById('timerDisplay'),
+                timerStatus: document.getElementById('timerStatus')
+            };
+
+            elements.startBtn.addEventListener('click', startTimer);
+            elements.pauseBtn.addEventListener('click', pauseTimer);
+            elements.switchBtn.addEventListener('click', switchTimerMode);
+            elements.resetBtn.addEventListener('click', resetTimer);
+            elements.manualMode.addEventListener('change', (e) => {
+                appState.timer.manualMode = e.target.checked;
+                saveSettings();
+            });
+            
+            elements.workTime.addEventListener('change', () => {
+                if (!appState.timer.isRunning && appState.timer.isWorkTime) {
+                    appState.timer.timeLeft = elements.workTime.value * 60;
+                    updateTimerDisplay();
+                }
+                saveSettings();
+            });
+            
+            elements.restTime.addEventListener('change', saveSettings);
+
+            updateTimerDisplay();
+        }
+
+        function startTimer() {
+            if (appState.timer.isPaused) {
+                appState.timer.isPaused = false;
+            } else {
+                const workTime = document.getElementById('workTime').value;
+                const restTime = document.getElementById('restTime').value;
+                appState.timer.timeLeft = appState.timer.isWorkTime ? workTime * 60 : restTime * 60;
+            }
+            
+            appState.timer.isRunning = true;
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('pauseBtn').disabled = false;
+            document.getElementById('switchBtn').disabled = false;
+            
+            appState.timer.interval = setInterval(() => {
+                appState.timer.timeLeft--;
+                updateTimerDisplay();
+                
+                if (appState.timer.timeLeft <= 0) {
+                    onTimerComplete();
+                }
+            }, 1000);
+
+            hapticFeedback();
+            showNotification('⏰ Timer avviato!', 'success');
+        }
+
+        function pauseTimer() {
+            appState.timer.isPaused = true;
+            appState.timer.isRunning = false;
+            clearInterval(appState.timer.interval);
+            
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('switchBtn').disabled = true;
+            
+            hapticFeedback();
+        }
+
+        function resetTimer() {
+            appState.timer.isRunning = false;
+            appState.timer.isPaused = false;
+            appState.timer.isWorkTime = true;
+            clearInterval(appState.timer.interval);
+            
+            const workTime = document.getElementById('workTime').value;
+            appState.timer.timeLeft = workTime * 60;
+            
+            updateTimerDisplay();
+            
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('switchBtn').disabled = true;
+            
+            hapticFeedback();
+        }
+
+        function switchTimerMode() {
+            if (appState.timer.isRunning) {
+                appState.timer.isWorkTime = !appState.timer.isWorkTime;
+                const workTime = document.getElementById('workTime').value;
+                const restTime = document.getElementById('restTime').value;
+                appState.timer.timeLeft = appState.timer.isWorkTime ? workTime * 60 : restTime * 60;
+                updateTimerDisplay();
+                hapticFeedback();
+            }
+        }
+
+        function onTimerComplete() {
+            appState.timer.isRunning = false;
+            clearInterval(appState.timer.interval);
+            
+            playAlarm();
+            hapticFeedback('success');
+            
+            const nextMode = appState.timer.isWorkTime ? 'Riposo' : 'Lavoro';
+            showNotification(`✅ ${appState.timer.isWorkTime ? 'Lavoro' : 'Riposo'} completato!`, 'success');
+            
+            // Send browser notification
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(`⏰ ${appState.timer.isWorkTime ? 'Lavoro' : 'Riposo'} completato!`, {
+                    body: `Prossimo: ${nextMode}`,
+                    icon: 'data:image/svg+xml,%3Csvg%20xmlns="http://www.w3.org/2000/svg"%20viewBox="0%200%20100%20100"%3E%3Crect%20width="100"%20height="100"%20fill="%23667eea"/%3E%3Ctext%20x="50"%20y="60"%20font-size="40"%20text-anchor="middle"%20fill="white"%3E⏰%3C/text%3E%3C/svg%3E'
+                });
+            }
+            
+            if (!appState.timer.manualMode) {
+                appState.timer.isWorkTime = !appState.timer.isWorkTime;
+                const workTime = document.getElementById('workTime').value;
+                const restTime = document.getElementById('restTime').value;
+                appState.timer.timeLeft = appState.timer.isWorkTime ? workTime * 60 : restTime * 60;
+                
+                setTimeout(() => {
+                    if (!appState.timer.isPaused) {
+                        startTimer();
+                    }
+                }, 3000);
+            } else {
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                document.getElementById('switchBtn').disabled = true;
+            }
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(appState.timer.timeLeft / 60);
+            const seconds = appState.timer.timeLeft % 60;
+            const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('timerDisplay').textContent = display;
+            
+            if (appState.timer.isRunning) {
+                document.getElementById('timerStatus').textContent = 
+                    appState.timer.isWorkTime ? '🔧 Tempo di Lavoro' : '☕ Tempo di Riposo';
+                document.title = `${display} - ${appState.timer.isWorkTime ? 'Lavoro' : 'Riposo'}`;
+            } else if (appState.timer.isPaused) {
+                document.getElementById('timerStatus').textContent = '⏸️ In Pausa';
+                document.title = 'Timer & Abitudini';
+            } else {
+                document.getElementById('timerStatus').textContent = 'Pronto per iniziare';
+                document.title = 'Timer & Abitudini';
+            }
+        }
+
+        function playAlarm() {
+            try {
+                // Create audio context
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Create beep sound
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                        oscillator.type = 'sine';
+                        
+                        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                        
+                        oscillator.start();
+                        oscillator.stop(audioContext.currentTime + 0.5);
+                    }, i * 600);
+                }
+            } catch (error) {
+                console.log('Audio not supported');
+            }
+        }
+
+        // Tasks Functions
+        function initializeTasks() {
+            document.getElementById('addTaskBtn').addEventListener('click', addTask);
+            document.getElementById('taskInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addTask();
+            });
+            
+            renderTasks();
+        }
+
+        function addTask() {
+            const taskInput = document.getElementById('taskInput');
+            const difficultySelect = document.getElementById('difficultySelect');
+            const taskText = taskInput.value.trim();
+            
+            if (taskText) {
+                const task = {
+                    id: Date.now(),
+                    text: taskText,
+                    difficulty: difficultySelect.value,
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                };
+                
+                appState.tasks.push(task);
+                saveTasks();
+                renderTasks();
+                taskInput.value = '';
+                hapticFeedback();
+                showNotification('✅ Faccenda aggiunta!', 'success');
+            }
+        }
+
+        function toggleTask(taskId) {
+            const task = appState.tasks.find(t => t.id === taskId);
+            if (task) {
+                task.completed = !task.completed;
+                saveTasks();
+                renderTasks();
+                hapticFeedback();
+                
+                if (task.completed) {
+                    showNotification('🎉 Faccenda completata!', 'success');
+                }
+            }
+        }
+
+        function deleteTask(taskId) {
+            const task = appState.tasks.find(t => t.id === taskId);
+            if (task && confirm(`Eliminare "${task.text}"?`)) {
+                appState.tasks = appState.tasks.filter(t => t.id !== taskId);
+                saveTasks();
+                renderTasks();
+                hapticFeedback('heavy');
+                showNotification('🗑️ Faccenda eliminata', 'info');
+            }
+        }
+
+        function renderTasks() {
+            const tasksList = document.getElementById('tasksList');
+            tasksList.innerHTML = '';
+            
+            if (appState.tasks.length === 0) {
+                tasksList.innerHTML = `
+                    <div class="empty-state">
+                        <p>📝 Nessuna faccenda ancora!</p>
+                        <p>Aggiungi la tua prima faccenda per iniziare.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            appState.tasks.forEach(task => {
+                const taskElement = document.createElement('div');
+                taskElement.className = `task-item ${task.completed ? 'completed' : ''}`;
+                
+                taskElement.innerHTML = `
+                    <div class="task-content">
+                        <input type="checkbox" ${task.completed ? 'checked' : ''} 
+                               onchange="toggleTask(${task.id})">
+                        <div class="task-text">${task.text}</div>
+                        <div class="difficulty-badge difficulty-${task.difficulty}">${task.difficulty}</div>
+                    </div>
+                    <button class="delete-btn" onclick="deleteTask(${task.id})">🗑️</button>
+                `;
+                
+                tasksList.appendChild(taskElement);
+            });
+        }
+
+        function saveTasks() {
+            localStorage.setItem('tasks', JSON.stringify(appState.tasks));
+        }
+
+        // Habits Functions
+        function initializeHabits() {
+            document.getElementById('addHabitBtn').addEventListener('click', addHabit);
+            document.getElementById('habitInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addHabit();
+            });
+            
+            document.getElementById('prevMonthBtn').addEventListener('click', () => changeMonth(-1));
+            document.getElementById('nextMonthBtn').addEventListener('click', () => changeMonth(1));
+            
+            // Color picker
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.addEventListener('click', () => selectColor(option));
+            });
+            
+            updateMonthDisplay();
+            renderHabits();
+        }
+
+        function addHabit() {
+            const habitInput = document.getElementById('habitInput');
+            const frequencySelect = document.getElementById('frequencySelect');
+            const habitText = habitInput.value.trim();
+            
+            if (habitText) {
+                const habit = {
+                    id: Date.now(),
+                    text: habitText,
+                    frequency: frequencySelect.value,
+                    color: appState.selectedColor,
+                    completedDays: {},
+                    createdAt: new Date().toISOString()
+                };
+                
+                appState.habits.push(habit);
+                saveHabits();
+                renderHabits();
+                habitInput.value = '';
+                hapticFeedback();
+                showNotification('🌟 Abitudine aggiunta!', 'success');
+            }
+        }
+
+        function selectColor(selectedOption) {
+            document.querySelectorAll('.color-option').forEach(option => 
+                option.classList.remove('selected'));
+            selectedOption.classList.add('selected');
+            appState.selectedColor = selectedOption.dataset.color;
+            hapticFeedback('light');
+        }
+
+        function toggleHabitDay(habitId, dayKey) {
+            const habit = appState.habits.find(h => h.id === habitId);
+            if (habit) {
+                const dayDate = new Date(dayKey);
+                const today = new Date();
+                today.setHours(23, 59, 59, 999); // End of today
+                
+                if (dayDate > today) {
+                    showNotification('⚠️ Non puoi segnare giorni futuri!', 'error');
+                    return;
+                }
+                
+                const wasCompleted = habit.completedDays[dayKey];
+                
+                if (wasCompleted) {
+                    delete habit.completedDays[dayKey];
+                } else {
+                    habit.completedDays[dayKey] = true;
+                }
+                
+                saveHabits();
+                renderHabits();
+                hapticFeedback();
+                
+                if (!wasCompleted) {
+                    showNotification(`✅ ${habit.text} completata!`, 'success');
+                    checkStreakMilestone(habit);
+                }
+            }
+        }
+
+        function checkStreakMilestone(habit) {
+            const stats = calculateHabitStats(habit);
+            const milestones = [7, 14, 30, 50, 100];
+            
+            if (milestones.includes(stats.currentStreak)) {
+                showNotification(`🎉 ${stats.currentStreak} giorni di fila!`, 'success');
+                hapticFeedback('success');
+                
+                // Browser notification
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification(`🎉 Traguardo raggiunto!`, {
+                        body: `${habit.text}: ${stats.currentStreak} giorni consecutivi!`,
+                        icon: 'data:image/svg+xml,%3Csvg%20xmlns="http://www.w3.org/2000/svg"%20viewBox="0%200%20100%20100"%3E%3Crect%20width="100"%20height="100"%20fill="%23667eea"/%3E%3Ctext%20x="50"%20y="60"%20font-size="40"%20text-anchor="middle"%20fill="white"%3E🌟%3C/text%3E%3C/svg%3E'
+                    });
+                }
+            }
+        }
+
+        function deleteHabit(habitId) {
+            const habit = appState.habits.find(h => h.id === habitId);
+            if (habit && confirm(`Eliminare "${habit.text}"?`)) {
+                appState.habits = appState.habits.filter(h => h.id !== habitId);
+                saveHabits();
+                renderHabits();
+                hapticFeedback('heavy');
+                showNotification('🗑️ Abitudine eliminata', 'info');
+            }
+        }
+
+        function changeMonth(direction) {
+            appState.viewDate.setMonth(appState.viewDate.getMonth() + direction);
+            updateMonthDisplay();
+            renderHabits();
+            hapticFeedback('light');
+        }
+
+        function updateMonthDisplay() {
+            const options = { year: 'numeric', month: 'long' };
+            document.getElementById('currentMonth').textContent = 
+                appState.viewDate.toLocaleDateString('it-IT', options);
+        }
+
+        function getDaysInMonth(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const days = [];
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                days.push(new Date(year, month, day));
+            }
+            
+            return days;
+        }
+
+        function calculateHabitStats(habit) {
+            const completedDays = Object.keys(habit.completedDays).length;
+            const createdDate = new Date(habit.createdAt);
+            const today = new Date();
+            const totalDays = Math.floor((today - createdDate) / (1000 * 60 * 60 * 24)) + 1;
+            
+            // Calculate current streak
+            let currentStreak = 0;
+            let date = new Date(today);
+            while (date >= createdDate) {
+                const dayKey = date.toISOString().split('T')[0];
+                if (habit.completedDays[dayKey]) {
+                    currentStreak++;
+                } else {
+                    break;
+                }
+                date.setDate(date.getDate() - 1);
+            }
+            
+            // Calculate best streak
+            let bestStreak = 0;
+            let tempStreak = 0;
+            const sortedDays = Object.keys(habit.completedDays).sort();
+            
+            for (let i = 0; i < sortedDays.length; i++) {
+                if (i === 0) {
+                    tempStreak = 1;
+                } else {
+                    const currentDay = new Date(sortedDays[i]);
+                    const prevDay = new Date(sortedDays[i - 1]);
+                    const dayDiff = (currentDay - prevDay) / (1000 * 60 * 60 * 24);
+                    
+                    if (dayDiff === 1) {
+                        tempStreak++;
+                    } else {
+                        bestStreak = Math.max(bestStreak, tempStreak);
+                        tempStreak = 1;
+                    }
+                }
+            }
+            bestStreak = Math.max(bestStreak, tempStreak);
+            
+            const successRate = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0;
+            
+            return {
+                completedDays,
+                totalDays,
+                currentStreak,
+                bestStreak,
+                successRate
+            };
+        }
+
+        function renderHabits() {
+            const habitsList = document.getElementById('habitsList');
+            habitsList.innerHTML = '';
+            
+            if (appState.habits.length === 0) {
+                habitsList.innerHTML = `
+                    <div class="empty-state">
+                        <p>🌱 Nessuna abitudine ancora!</p>
+                        <p>Aggiungi la tua prima abitudine per iniziare.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            appState.habits.forEach(habit => {
+                const stats = calculateHabitStats(habit);
+                const days = getDaysInMonth(appState.viewDate);
+                const today = new Date();
+                const todayStr = today.toISOString().split('T')[0];
+                
+                const habitCard = document.createElement('div');
+                habitCard.className = 'habit-card';
+                habitCard.style.setProperty('--habit-color', habit.color);
+                
+                const daysGrid = days.map(day => {
+                    const dayStr = day.toISOString().split('T')[0];
+                    const isCompleted = habit.completedDays[dayStr];
+                    const isToday = dayStr === todayStr;
+                    const isFuture = day > today;
+                    
+                    let classes = 'day-cell';
+                    if (isCompleted) classes += ' completed';
+                    if (isToday) classes += ' today';
+                    if (isFuture) classes += ' future';
+                    
+                    return `
+                        <div class="${classes}" 
+                             onclick="toggleHabitDay(${habit.id}, '${dayStr}')"
+                             style="--habit-color: ${habit.color}">
+                            ${day.getDate()}
+                        </div>
+                    `;
+                }).join('');
+                
+                habitCard.innerHTML = `
+                    <div class="habit-header">
+                        <div class="habit-title">
+                            <span class="habit-icon" style="background-color: ${habit.color}"></span>
+                            ${habit.text}
+                        </div>
+                        <button class="delete-btn" onclick="deleteHabit(${habit.id})">🗑️</button>
+                    </div>
+                    <div class="days-grid">
+                        ${daysGrid}
+                    </div>
+                    <div class="stats">
+                        <div class="stat-item">
+                            <div class="stat-number">${stats.completedDays}</div>
+                            <div class="stat-label">Completati</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" style="color: #FF9800">${stats.currentStreak}</div>
+                            <div class="stat-label">Streak</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" style="color: #9C27B0">${stats.bestStreak}</div>
+                            <div class="stat-label">Record</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">${stats.successRate}%</div>
+                            <div class="stat-label">Successo</div>
+                        </div>
+                    </div>
+                `;
+                
+                habitsList.appendChild(habitCard);
+            });
+        }
+
+        function saveHabits() {
+            localStorage.setItem('habits', JSON.stringify(appState.habits));
+        }
+
+        // Tab Functions
+        function initializeTabs() {
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTab = button.dataset.tab;
+                    
+                    // Remove active from all
+                    document.querySelectorAll('.tab-button').forEach(btn => 
+                        btn.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(content => 
+                        content.classList.remove('active'));
+                    
+                    // Add active to selected
+                    button.classList.add('active');
+                    document.getElementById(`${targetTab}-tab`).classList.add('active');
+                    
+                    hapticFeedback('light');
+                    localStorage.setItem('lastActiveTab', targetTab);
+                });
+            });
+
+            // Restore last active tab
+            const lastTab = localStorage.getItem('lastActiveTab');
+            if (lastTab) {
+                const tabButton = document.querySelector(`[data-tab="${lastTab}"]`);
+                if (tabButton) {
+                    tabButton.click();
+                }
+            }
+        }
+
+        // Utility Functions
+        function hapticFeedback(intensity = 'light') {
+            if ('vibrate' in navigator) {
+                const patterns = {
+                    light: [10],
+                    medium: [25],
+                    heavy: [50],
+                    success: [25, 10, 25]
+                };
+                navigator.vibrate(patterns[intensity] || patterns.light);
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type} show`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        document.body.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        function saveSettings() {
+            const settings = {
+                workTime: document.getElementById('workTime').value,
+                restTime: document.getElementById('restTime').value,
+                manualMode: appState.timer.manualMode
+            };
+            localStorage.setItem('timerSettings', JSON.stringify(settings));
+        }
+
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem('timerSettings') || '{}');
+            
+            if (settings.workTime) {
+                document.getElementById('workTime').value = settings.workTime;
+                appState.timer.timeLeft = settings.workTime * 60;
+            }
+            
+            if (settings.restTime) {
+                document.getElementById('restTime').value = settings.restTime;
+            }
+            
+            if (settings.manualMode !== undefined) {
+                appState.timer.manualMode = settings.manualMode;
+                document.getElementById('manualMode').checked = settings.manualMode;
+            }
+            
+            updateTimerDisplay();
+        }
+
+        // Request notification permission
+        if ('Notification' in window && Notification.permission === 'default') {
+            setTimeout(() => {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        showNotification('🔔 Notifiche attivate!', 'success');
+                    }
+                });
+            }, 2000);
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Space to start/pause timer
+            if (e.code === 'Space' && 
+                document.querySelector('#timer-tab').classList.contains('active') &&
+                !document.activeElement.matches('input, textarea, select')) {
+                e.preventDefault();
+                const startBtn = document.getElementById('startBtn');
+                const pauseBtn = document.getElementById('pauseBtn');
+                
+                if (!startBtn.disabled) {
+                    startTimer();
+                } else if (!pauseBtn.disabled) {
+                    pauseTimer();
+                }
+            }
+        });
+
+        // Prevent zoom on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        console.log('🎯 Timer & Abitudini PWA caricata correttamente!');
+    </script>
+</body>
+</html>
