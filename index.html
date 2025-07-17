@@ -13,7 +13,7 @@
     <meta name="description" content="Timer e Tracciatore Abitudini">
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Timer%20%26%20Abitudini%22,%22short_name%22:%22Timer%22,%22description%22:%22App%20per%20timer%20e%20abitudini%22,%22start_url%22:%22./%22,%22display%22:%22standalone%22,%22background_color%22:%22%23667eea%22,%22theme_color%22:%22%23667eea%22,%22orientation%22:%22portrait%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20fill='%23667eea'/%3E%3Ctext%20x='50'%20y='60'%20font-size='40'%20text-anchor='middle'%20fill='white'%3E⏰%3C/text%3E%3C/svg%3E%22,%22sizes%22:%22192x192%22,%22type%22:%22image/svg+xml%22}]}">
+    <link rel="manifest" href="manifest.json">
     
     <style>
         * {
@@ -602,22 +602,346 @@
     </div>
 
     <script>
+        // Background Timer Class - Gestisce il timer con timestamp
+        class BackgroundTimer {
+            constructor() {
+                this.isRunning = false;
+                this.isPaused = false;
+                this.isWorkTime = true;
+                this.startTime = null;
+                this.pausedTime = 0;
+                this.duration = 25 * 60; // 25 minuti in secondi
+                this.interval = null;
+                this.manualMode = false;
+                this.serviceWorkerRegistration = null;
+                
+                this.init();
+            }
+            
+            async init() {
+                // Registra service worker
+                if ('serviceWorker' in navigator) {
+                    try {
+                        this.serviceWorkerRegistration = await navigator.serviceWorker.register('/sw.js');
+                        console.log('Service Worker registrato correttamente');
+                    } catch (error) {
+                        console.warn('Service Worker non disponibile:', error);
+                    }
+                }
+                
+                // Richiedi permessi notifiche
+                if ('Notification' in window && Notification.permission === 'default') {
+                    setTimeout(() => {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === 'granted') {
+                                showNotification('🔔 Notifiche attivate!', 'success');
+                            }
+                        });
+                    }, 2000);
+                }
+                
+                // Gestisci visibility change
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        this.onAppHidden();
+                    } else {
+                        this.onAppVisible();
+                    }
+                });
+                
+                // Ripristina stato del timer al caricamento
+                this.restoreTimerState();
+            }
+            
+            start(duration = null) {
+                if (duration) this.duration = duration;
+                
+                this.isRunning = true;
+                this.isPaused = false;
+                this.startTime = Date.now() - this.pausedTime;
+                this.pausedTime = 0;
+                
+                this.saveTimerState();
+                this.startInterval();
+                
+                // Invia messaggio al service worker
+                if (this.serviceWorkerRegistration && this.serviceWorkerRegistration.active) {
+                    this.serviceWorkerRegistration.active.postMessage({
+                        type: 'TIMER_START',
+                        startTime: this.startTime,
+                        duration: this.duration,
+                        isWorkTime: this.isWorkTime
+                    });
+                }
+            }
+            
+            pause() {
+                this.isRunning = false;
+                this.isPaused = true;
+                this.pausedTime = Date.now() - this.startTime;
+                this.clearInterval();
+                this.saveTimerState();
+            }
+            
+            reset() {
+                this.isRunning = false;
+                this.isPaused = false;
+                this.isWorkTime = true;
+                this.startTime = null;
+                this.pausedTime = 0;
+                this.clearInterval();
+                this.saveTimerState();
+                this.updateDisplay();
+            }
+            
+            switch() {
+                if (this.isRunning) {
+                    this.isWorkTime = !this.isWorkTime;
+                    const workTime = document.getElementById('workTime').value;
+                    const restTime = document.getElementById('restTime').value;
+                    this.duration = this.isWorkTime ? workTime * 60 : restTime * 60;
+                    this.startTime = Date.now();
+                    this.pausedTime = 0;
+                    this.saveTimerState();
+                    this.updateDisplay();
+                }
+            }
+            
+            startInterval() {
+                this.clearInterval();
+                this.interval = setInterval(() => {
+                    this.updateTimer();
+                }, 1000);
+            }
+            
+            clearInterval() {
+                if (this.interval) {
+                    clearInterval(this.interval);
+                    this.interval = null;
+                }
+            }
+            
+            updateTimer() {
+                if (!this.isRunning) return;
+                
+                const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                const timeLeft = Math.max(0, this.duration - elapsed);
+                
+                this.updateDisplay(timeLeft);
+                
+                if (timeLeft <= 0) {
+                    this.onTimerComplete();
+                }
+            }
+            
+            updateDisplay(timeLeft = null) {
+                if (timeLeft === null) {
+                    const workTime = document.getElementById('workTime').value;
+                    const restTime = document.getElementById('restTime').value;
+                    timeLeft = this.isWorkTime ? workTime * 60 : restTime * 60;
+                }
+                
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                document.getElementById('timerDisplay').textContent = display;
+                
+                if (this.isRunning) {
+                    document.getElementById('timerStatus').textContent = 
+                        this.isWorkTime ? '🔧 Tempo di Lavoro' : '☕ Tempo di Riposo';
+                    document.title = `${display} - ${this.isWorkTime ? 'Lavoro' : 'Riposo'}`;
+                } else if (this.isPaused) {
+                    document.getElementById('timerStatus').textContent = '⏸️ In Pausa';
+                    document.title = 'Timer & Abitudini';
+                } else {
+                    document.getElementById('timerStatus').textContent = 'Pronto per iniziare';
+                    document.title = 'Timer & Abitudini';
+                }
+            }
+            
+            onTimerComplete() {
+                this.isRunning = false;
+                this.clearInterval();
+                
+                const message = this.isWorkTime ? 'Tempo di lavoro completato!' : 'Tempo di riposo completato!';
+                
+                // Suono e vibrazione
+                this.playAlarm();
+                this.hapticFeedback('success');
+                
+                // Mostra notifica in app
+                showNotification(`✅ ${message}`, 'success');
+                
+                // Notifica browser
+                this.showNotification(message);
+                
+                // Invia messaggio al service worker
+                if (this.serviceWorkerRegistration && this.serviceWorkerRegistration.active) {
+                    this.serviceWorkerRegistration.active.postMessage({
+                        type: 'TIMER_COMPLETE',
+                        message: message,
+                        wasWorkTime: this.isWorkTime
+                    });
+                }
+                
+                // Auto-switch se non in modalità manuale
+                if (!this.manualMode) {
+                    setTimeout(() => {
+                        this.isWorkTime = !this.isWorkTime;
+                        const workTime = document.getElementById('workTime').value;
+                        const restTime = document.getElementById('restTime').value;
+                        this.duration = this.isWorkTime ? workTime * 60 : restTime * 60;
+                        this.start();
+                    }, 3000);
+                } else {
+                    // Riabilita i pulsanti
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('pauseBtn').disabled = true;
+                    document.getElementById('switchBtn').disabled = true;
+                }
+            }
+            
+            showNotification(message) {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('⏰ Timer Completato!', {
+                        body: message,
+                        icon: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" fill="%23667eea"/%3E%3Ctext x="50" y="60" font-size="40" text-anchor="middle" fill="white"%3E⏰%3C/text%3E%3C/svg%3E',
+                        badge: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" fill="%23667eea"/%3E%3Ctext x="50" y="60" font-size="40" text-anchor="middle" fill="white"%3E⏰%3C/text%3E%3C/svg%3E',
+                        tag: 'timer-complete',
+                        requireInteraction: true
+                    });
+                }
+            }
+            
+            playAlarm() {
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    for (let i = 0; i < 3; i++) {
+                        setTimeout(() => {
+                            const oscillator = audioContext.createOscillator();
+                            const gainNode = audioContext.createGain();
+                            
+                            oscillator.connect(gainNode);
+                            gainNode.connect(audioContext.destination);
+                            
+                            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                            oscillator.type = 'sine';
+                            
+                            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                            
+                            oscillator.start();
+                            oscillator.stop(audioContext.currentTime + 0.5);
+                        }, i * 600);
+                    }
+                } catch (error) {
+                    console.log('Audio non supportato');
+                }
+            }
+            
+            hapticFeedback(intensity = 'light') {
+                if ('vibrate' in navigator) {
+                    const patterns = {
+                        light: [10],
+                        medium: [25],
+                        heavy: [50],
+                        success: [25, 10, 25]
+                    };
+                    navigator.vibrate(patterns[intensity] || patterns.light);
+                }
+            }
+            
+            saveTimerState() {
+                const state = {
+                    isRunning: this.isRunning,
+                    isPaused: this.isPaused,
+                    isWorkTime: this.isWorkTime,
+                    startTime: this.startTime,
+                    pausedTime: this.pausedTime,
+                    duration: this.duration,
+                    manualMode: this.manualMode,
+                    savedAt: Date.now()
+                };
+                
+                localStorage.setItem('timerState', JSON.stringify(state));
+            }
+            
+            restoreTimerState() {
+                const savedState = localStorage.getItem('timerState');
+                if (!savedState) return;
+                
+                try {
+                    const state = JSON.parse(savedState);
+                    const now = Date.now();
+                    
+                    // Se è passato troppo tempo (più di 24 ore), non ripristinare
+                    if (now - state.savedAt > 24 * 60 * 60 * 1000) {
+                        localStorage.removeItem('timerState');
+                        return;
+                    }
+                    
+                    this.isWorkTime = state.isWorkTime;
+                    this.duration = state.duration;
+                    this.manualMode = state.manualMode;
+                    
+                    if (state.isRunning && state.startTime) {
+                        const elapsed = Math.floor((now - state.startTime) / 1000);
+                        const timeLeft = Math.max(0, state.duration - elapsed);
+                        
+                        if (timeLeft > 0) {
+                            this.isRunning = true;
+                            this.startTime = state.startTime;
+                            this.startInterval();
+                            
+                            // Aggiorna UI
+                            document.getElementById('startBtn').disabled = true;
+                            document.getElementById('pauseBtn').disabled = false;
+                            document.getElementById('switchBtn').disabled = false;
+                        } else {
+                            // Il timer è scaduto mentre l'app era chiusa
+                            this.onTimerComplete();
+                        }
+                    } else if (state.isPaused && state.pausedTime > 0) {
+                        this.isPaused = true;
+                        this.pausedTime = state.pausedTime;
+                        const timeLeft = Math.max(0, state.duration - Math.floor(state.pausedTime / 1000));
+                        this.updateDisplay(timeLeft);
+                        
+                        // Aggiorna UI per pausa
+                        document.getElementById('startBtn').disabled = false;
+                        document.getElementById('pauseBtn').disabled = true;
+                        document.getElementById('switchBtn').disabled = true;
+                    }
+                } catch (error) {
+                    console.error('Errore nel ripristino dello stato del timer:', error);
+                    localStorage.removeItem('timerState');
+                }
+            }
+            
+            onAppHidden() {
+                console.log('App nascosta, salvataggio stato timer');
+                this.saveTimerState();
+            }
+            
+            onAppVisible() {
+                console.log('App visibile, ripristino timer');
+                this.restoreTimerState();
+            }
+        }
+
         // App State
         let appState = {
-            timer: {
-                isRunning: false,
-                isPaused: false,
-                isWorkTime: true,
-                timeLeft: 1500, // 25 minutes in seconds
-                interval: null,
-                manualMode: false
-            },
             tasks: JSON.parse(localStorage.getItem('tasks') || '[]'),
             habits: JSON.parse(localStorage.getItem('habits') || '[]'),
             selectedColor: '#2196F3',
             viewDate: new Date(),
             deferredPrompt: null
         };
+
+        // Inizializza il timer migliorato
+        let backgroundTimer;
 
         // Initialize App
         document.addEventListener('DOMContentLoaded', () => {
@@ -665,6 +989,19 @@
                     showInstallBanner();
                 }
             }, 5000);
+            
+            // Registra service worker
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js')
+                        .then(registration => {
+                            console.log('Service Worker registrato:', registration);
+                        })
+                        .catch(error => {
+                            console.log('Registrazione Service Worker fallita:', error);
+                        });
+                });
+            }
         }
 
         function showInstallBanner() {
@@ -694,6 +1031,8 @@
 
         // Timer Functions
         function initializeTimer() {
+            backgroundTimer = new BackgroundTimer();
+            
             const elements = {
                 workTime: document.getElementById('workTime'),
                 restTime: document.getElementById('restTime'),
@@ -701,9 +1040,7 @@
                 pauseBtn: document.getElementById('pauseBtn'),
                 switchBtn: document.getElementById('switchBtn'),
                 resetBtn: document.getElementById('resetBtn'),
-                manualMode: document.getElementById('manualMode'),
-                timerDisplay: document.getElementById('timerDisplay'),
-                timerStatus: document.getElementById('timerStatus')
+                manualMode: document.getElementById('manualMode')
             };
 
             elements.startBtn.addEventListener('click', startTimer);
@@ -711,54 +1048,40 @@
             elements.switchBtn.addEventListener('click', switchTimerMode);
             elements.resetBtn.addEventListener('click', resetTimer);
             elements.manualMode.addEventListener('change', (e) => {
-                appState.timer.manualMode = e.target.checked;
+                backgroundTimer.manualMode = e.target.checked;
                 saveSettings();
             });
             
             elements.workTime.addEventListener('change', () => {
-                if (!appState.timer.isRunning && appState.timer.isWorkTime) {
-                    appState.timer.timeLeft = elements.workTime.value * 60;
-                    updateTimerDisplay();
+                if (!backgroundTimer.isRunning && backgroundTimer.isWorkTime) {
+                    backgroundTimer.duration = elements.workTime.value * 60;
+                    backgroundTimer.updateDisplay();
                 }
                 saveSettings();
             });
             
             elements.restTime.addEventListener('change', saveSettings);
 
-            updateTimerDisplay();
+            backgroundTimer.updateDisplay();
         }
 
         function startTimer() {
-            if (appState.timer.isPaused) {
-                appState.timer.isPaused = false;
-            } else {
-                const workTime = document.getElementById('workTime').value;
-                const restTime = document.getElementById('restTime').value;
-                appState.timer.timeLeft = appState.timer.isWorkTime ? workTime * 60 : restTime * 60;
-            }
+            const workTime = document.getElementById('workTime').value;
+            const restTime = document.getElementById('restTime').value;
+            const duration = backgroundTimer.isWorkTime ? workTime * 60 : restTime * 60;
             
-            appState.timer.isRunning = true;
+            backgroundTimer.start(duration);
+            
             document.getElementById('startBtn').disabled = true;
             document.getElementById('pauseBtn').disabled = false;
             document.getElementById('switchBtn').disabled = false;
             
-            appState.timer.interval = setInterval(() => {
-                appState.timer.timeLeft--;
-                updateTimerDisplay();
-                
-                if (appState.timer.timeLeft <= 0) {
-                    onTimerComplete();
-                }
-            }, 1000);
-
             hapticFeedback();
             showNotification('⏰ Timer avviato!', 'success');
         }
 
         function pauseTimer() {
-            appState.timer.isPaused = true;
-            appState.timer.isRunning = false;
-            clearInterval(appState.timer.interval);
+            backgroundTimer.pause();
             
             document.getElementById('startBtn').disabled = false;
             document.getElementById('pauseBtn').disabled = true;
@@ -768,15 +1091,11 @@
         }
 
         function resetTimer() {
-            appState.timer.isRunning = false;
-            appState.timer.isPaused = false;
-            appState.timer.isWorkTime = true;
-            clearInterval(appState.timer.interval);
+            backgroundTimer.reset();
             
             const workTime = document.getElementById('workTime').value;
-            appState.timer.timeLeft = workTime * 60;
-            
-            updateTimerDisplay();
+            backgroundTimer.duration = workTime * 60;
+            backgroundTimer.updateDisplay();
             
             document.getElementById('startBtn').disabled = false;
             document.getElementById('pauseBtn').disabled = true;
@@ -786,99 +1105,8 @@
         }
 
         function switchTimerMode() {
-            if (appState.timer.isRunning) {
-                appState.timer.isWorkTime = !appState.timer.isWorkTime;
-                const workTime = document.getElementById('workTime').value;
-                const restTime = document.getElementById('restTime').value;
-                appState.timer.timeLeft = appState.timer.isWorkTime ? workTime * 60 : restTime * 60;
-                updateTimerDisplay();
-                hapticFeedback();
-            }
-        }
-
-        function onTimerComplete() {
-            appState.timer.isRunning = false;
-            clearInterval(appState.timer.interval);
-            
-            playAlarm();
-            hapticFeedback('success');
-            
-            const nextMode = appState.timer.isWorkTime ? 'Riposo' : 'Lavoro';
-            showNotification(`✅ ${appState.timer.isWorkTime ? 'Lavoro' : 'Riposo'} completato!`, 'success');
-            
-            // Send browser notification
-            if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification(`⏰ ${appState.timer.isWorkTime ? 'Lavoro' : 'Riposo'} completato!`, {
-                    body: `Prossimo: ${nextMode}`,
-                    icon: 'data:image/svg+xml,%3Csvg%20xmlns="http://www.w3.org/2000/svg"%20viewBox="0%200%20100%20100"%3E%3Crect%20width="100"%20height="100"%20fill="%23667eea"/%3E%3Ctext%20x="50"%20y="60"%20font-size="40"%20text-anchor="middle"%20fill="white"%3E⏰%3C/text%3E%3C/svg%3E'
-                });
-            }
-            
-            if (!appState.timer.manualMode) {
-                appState.timer.isWorkTime = !appState.timer.isWorkTime;
-                const workTime = document.getElementById('workTime').value;
-                const restTime = document.getElementById('restTime').value;
-                appState.timer.timeLeft = appState.timer.isWorkTime ? workTime * 60 : restTime * 60;
-                
-                setTimeout(() => {
-                    if (!appState.timer.isPaused) {
-                        startTimer();
-                    }
-                }, 3000);
-            } else {
-                document.getElementById('startBtn').disabled = false;
-                document.getElementById('pauseBtn').disabled = true;
-                document.getElementById('switchBtn').disabled = true;
-            }
-        }
-
-        function updateTimerDisplay() {
-            const minutes = Math.floor(appState.timer.timeLeft / 60);
-            const seconds = appState.timer.timeLeft % 60;
-            const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            
-            document.getElementById('timerDisplay').textContent = display;
-            
-            if (appState.timer.isRunning) {
-                document.getElementById('timerStatus').textContent = 
-                    appState.timer.isWorkTime ? '🔧 Tempo di Lavoro' : '☕ Tempo di Riposo';
-                document.title = `${display} - ${appState.timer.isWorkTime ? 'Lavoro' : 'Riposo'}`;
-            } else if (appState.timer.isPaused) {
-                document.getElementById('timerStatus').textContent = '⏸️ In Pausa';
-                document.title = 'Timer & Abitudini';
-            } else {
-                document.getElementById('timerStatus').textContent = 'Pronto per iniziare';
-                document.title = 'Timer & Abitudini';
-            }
-        }
-
-        function playAlarm() {
-            try {
-                // Create audio context
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                
-                // Create beep sound
-                for (let i = 0; i < 3; i++) {
-                    setTimeout(() => {
-                        const oscillator = audioContext.createOscillator();
-                        const gainNode = audioContext.createGain();
-                        
-                        oscillator.connect(gainNode);
-                        gainNode.connect(audioContext.destination);
-                        
-                        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-                        oscillator.type = 'sine';
-                        
-                        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-                        
-                        oscillator.start();
-                        oscillator.stop(audioContext.currentTime + 0.5);
-                    }, i * 600);
-                }
-            } catch (error) {
-                console.log('Audio not supported');
-            }
+            backgroundTimer.switch();
+            hapticFeedback();
         }
 
         // Tasks Functions
@@ -1031,7 +1259,7 @@
             if (habit) {
                 const dayDate = new Date(dayKey);
                 const today = new Date();
-                today.setHours(23, 59, 59, 999); // End of today
+                today.setHours(23, 59, 59, 999);
                 
                 if (dayDate > today) {
                     showNotification('⚠️ Non puoi segnare giorni futuri!', 'error');
@@ -1065,11 +1293,10 @@
                 showNotification(`🎉 ${stats.currentStreak} giorni di fila!`, 'success');
                 hapticFeedback('success');
                 
-                // Browser notification
                 if ('Notification' in window && Notification.permission === 'granted') {
                     new Notification(`🎉 Traguardo raggiunto!`, {
                         body: `${habit.text}: ${stats.currentStreak} giorni consecutivi!`,
-                        icon: 'data:image/svg+xml,%3Csvg%20xmlns="http://www.w3.org/2000/svg"%20viewBox="0%200%20100%20100"%3E%3Crect%20width="100"%20height="100"%20fill="%23667eea"/%3E%3Ctext%20x="50"%20y="60"%20font-size="40"%20text-anchor="middle"%20fill="white"%3E🌟%3C/text%3E%3C/svg%3E'
+                        icon: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" fill="%23667eea"/%3E%3Ctext x="50" y="60" font-size="40" text-anchor="middle" fill="white"%3E🌟%3C/text%3E%3C/svg%3E'
                     });
                 }
             }
@@ -1312,7 +1539,7 @@
             const settings = {
                 workTime: document.getElementById('workTime').value,
                 restTime: document.getElementById('restTime').value,
-                manualMode: appState.timer.manualMode
+                manualMode: backgroundTimer ? backgroundTimer.manualMode : false
             };
             localStorage.setItem('timerSettings', JSON.stringify(settings));
         }
@@ -1322,7 +1549,9 @@
             
             if (settings.workTime) {
                 document.getElementById('workTime').value = settings.workTime;
-                appState.timer.timeLeft = settings.workTime * 60;
+                if (backgroundTimer) {
+                    backgroundTimer.duration = settings.workTime * 60;
+                }
             }
             
             if (settings.restTime) {
@@ -1330,27 +1559,19 @@
             }
             
             if (settings.manualMode !== undefined) {
-                appState.timer.manualMode = settings.manualMode;
                 document.getElementById('manualMode').checked = settings.manualMode;
+                if (backgroundTimer) {
+                    backgroundTimer.manualMode = settings.manualMode;
+                }
             }
             
-            updateTimerDisplay();
-        }
-
-        // Request notification permission
-        if ('Notification' in window && Notification.permission === 'default') {
-            setTimeout(() => {
-                Notification.requestPermission().then(permission => {
-                    if (permission === 'granted') {
-                        showNotification('🔔 Notifiche attivate!', 'success');
-                    }
-                });
-            }, 2000);
+            if (backgroundTimer) {
+                backgroundTimer.updateDisplay();
+            }
         }
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            // Space to start/pause timer
             if (e.code === 'Space' && 
                 document.querySelector('#timer-tab').classList.contains('active') &&
                 !document.activeElement.matches('input, textarea, select')) {
@@ -1376,7 +1597,7 @@
             lastTouchEnd = now;
         }, false);
 
-        console.log('🎯 Timer & Abitudini PWA caricata correttamente!');
+        console.log('🎯 Timer & Abitudini PWA con Background Timer caricata!');
     </script>
 </body>
 </html>
