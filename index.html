@@ -80,11 +80,12 @@
             border-radius: 15px;
             padding: 4px;
             margin-bottom: 20px;
+            overflow-x: auto;
         }
 
         .tab-button {
             flex: 1;
-            padding: 12px;
+            padding: 12px 8px;
             border: none;
             background: transparent;
             color: rgba(255, 255, 255, 0.7);
@@ -92,6 +93,9 @@
             cursor: pointer;
             border-radius: 12px;
             transition: all 0.3s ease;
+            white-space: nowrap;
+            min-width: 80px;
+            font-size: 0.9em;
         }
 
         .tab-button.active {
@@ -106,6 +110,79 @@
 
         .tab-content.active {
             display: block;
+        }
+
+        /* Home Tab Styles */
+        .today-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .today-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .today-title {
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+
+        .add-to-today-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 15px 10px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            transition: width 0.3s ease;
         }
 
         /* Timer Styles */
@@ -212,7 +289,7 @@
             margin-bottom: 15px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: space-between;
         }
 
         .input-row {
@@ -258,11 +335,29 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            cursor: grab;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .task-item:active {
+            cursor: grabbing;
         }
 
         .task-item.completed {
             opacity: 0.6;
             text-decoration: line-through;
+        }
+
+        .task-item.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .task-item.drag-over {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255,255,255,0.2);
         }
 
         .task-content {
@@ -274,6 +369,43 @@
 
         .task-text {
             flex: 1;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .drag-handle {
+            cursor: grab;
+            color: rgba(255,255,255,0.5);
+            font-size: 1.2em;
+            padding: 5px;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .move-btn {
+            background: none;
+            border: none;
+            color: #2196F3;
+            font-size: 1.1em;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: auto;
+        }
+
+        .move-btn:active {
+            background: rgba(33, 150, 243, 0.2);
         }
 
         .difficulty-badge {
@@ -301,10 +433,28 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            min-height: auto;
         }
 
         .delete-btn:active {
             background: rgba(244, 67, 54, 0.2);
+        }
+
+        .task-count {
+            font-size: 0.8em;
+            opacity: 0.7;
+            margin-left: 10px;
+        }
+
+        .clear-completed-btn {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            color: #f44336;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
 
         /* Habits Section */
@@ -415,17 +565,6 @@
             text-align: center;
         }
 
-        .stat-number {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #4CAF50;
-        }
-
-        .stat-label {
-            font-size: 0.7em;
-            opacity: 0.8;
-        }
-
         .month-nav {
             display: flex;
             justify-content: center;
@@ -492,8 +631,17 @@
                 grid-template-columns: repeat(2, 1fr);
             }
             
+            .quick-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
             .container {
                 padding: 10px;
+            }
+
+            .tab-button {
+                font-size: 0.8em;
+                padding: 10px 6px;
             }
         }
     </style>
@@ -514,12 +662,51 @@
 
         <!-- Tab Navigation -->
         <div class="tab-buttons">
-            <button class="tab-button active" data-tab="timer">⏱️ Timer</button>
+            <button class="tab-button active" data-tab="home">🏠 Home</button>
+            <button class="tab-button" data-tab="timer">⏱️ Timer</button>
+            <button class="tab-button" data-tab="tasks">📋 Faccende</button>
             <button class="tab-button" data-tab="habits">🌟 Abitudini</button>
         </div>
 
+        <!-- Home Tab -->
+        <div class="tab-content active" id="home-tab">
+            <!-- Quick Stats -->
+            <div class="quick-stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="todayTasksCount">0</div>
+                    <div class="stat-label">Da fare oggi</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="completedTodayCount">0</div>
+                    <div class="stat-label">Completate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalTasksCount">0</div>
+                    <div class="stat-label">Totali</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="habitsStreakCount">0</div>
+                    <div class="stat-label">Streak abitudini</div>
+                </div>
+            </div>
+
+            <!-- Today's Tasks -->
+            <div class="today-section">
+                <div class="today-header">
+                    <div class="today-title">📅 Da fare oggi</div>
+                    <button class="add-to-today-btn" onclick="showAddToTodayModal()">+ Aggiungi</button>
+                </div>
+                
+                <div class="progress-bar">
+                    <div class="progress-fill" id="todayProgress" style="width: 0%"></div>
+                </div>
+                
+                <div class="task-list" id="todayTasksList" ondrop="handleDrop(event, 'today')" ondragover="handleDragOver(event)"></div>
+            </div>
+        </div>
+
         <!-- Timer Tab -->
-        <div class="tab-content active" id="timer-tab">
+        <div class="tab-content" id="timer-tab">
             <div class="timer-section">
                 <div class="timer-status" id="timerStatus">Pronto per iniziare</div>
                 <div class="timer-display" id="timerDisplay">25:00</div>
@@ -548,13 +735,18 @@
                     </label>
                 </div>
             </div>
+        </div>
 
-            <!-- Tasks Section -->
+        <!-- Tasks Tab -->
+        <div class="tab-content" id="tasks-tab">
             <div class="section">
-                <h2 class="section-title">📋 Lista Faccende</h2>
+                <div class="section-title">
+                    <span>📋 Tutte le Faccende</span>
+                    <span class="task-count" id="allTasksCount">0 faccende</span>
+                </div>
                 
                 <div class="input-row">
-                    <input type="text" id="taskInput" placeholder="Inserisci una faccenda...">
+                    <input type="text" id="taskInput" placeholder="Inserisci una nuova faccenda...">
                     <select id="difficultySelect">
                         <option value="facile">Facile</option>
                         <option value="medio">Medio</option>
@@ -563,7 +755,12 @@
                     <button class="btn-secondary" id="addTaskBtn">➕</button>
                 </div>
                 
-                <div class="task-list" id="tasksList"></div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <div></div>
+                    <button class="clear-completed-btn" onclick="clearCompletedTasks()">🗑️ Rimuovi completate</button>
+                </div>
+                
+                <div class="task-list" id="allTasksList" ondrop="handleDrop(event, 'all')" ondragover="handleDragOver(event)"></div>
             </div>
         </div>
 
@@ -934,10 +1131,12 @@
         // App State
         let appState = {
             tasks: JSON.parse(localStorage.getItem('tasks') || '[]'),
+            todayTasks: JSON.parse(localStorage.getItem('todayTasks') || '[]'),
             habits: JSON.parse(localStorage.getItem('habits') || '[]'),
             selectedColor: '#2196F3',
             viewDate: new Date(),
-            deferredPrompt: null
+            deferredPrompt: null,
+            draggedTask: null
         };
 
         // Inizializza il timer migliorato
@@ -963,6 +1162,9 @@
             
             // Initialize Tabs
             initializeTabs();
+            
+            // Initialize Home
+            initializeHome();
             
             // Load saved settings
             loadSettings();
@@ -1027,6 +1229,104 @@
             
             appState.deferredPrompt = null;
             hideInstallBanner();
+        }
+
+        // Home Functions
+        function initializeHome() {
+            updateTodayTasksList();
+            updateStats();
+        }
+
+        function updateStats() {
+            const todayTasks = appState.todayTasks;
+            const allTasks = appState.tasks;
+            const completedToday = todayTasks.filter(t => t.completed).length;
+            const totalTasks = allTasks.length;
+            
+            // Calcola streak abitudini
+            let maxStreak = 0;
+            appState.habits.forEach(habit => {
+                const stats = calculateHabitStats(habit);
+                maxStreak = Math.max(maxStreak, stats.currentStreak);
+            });
+            
+            document.getElementById('todayTasksCount').textContent = todayTasks.length;
+            document.getElementById('completedTodayCount').textContent = completedToday;
+            document.getElementById('totalTasksCount').textContent = totalTasks;
+            document.getElementById('habitsStreakCount').textContent = maxStreak;
+            
+            // Aggiorna progress bar
+            const progress = todayTasks.length > 0 ? (completedToday / todayTasks.length) * 100 : 0;
+            document.getElementById('todayProgress').style.width = progress + '%';
+        }
+
+        function showAddToTodayModal() {
+            const availableTasks = appState.tasks.filter(task => 
+                !task.completed && !appState.todayTasks.find(t => t.id === task.id)
+            );
+            
+            if (availableTasks.length === 0) {
+                showNotification('📝 Nessuna faccenda disponibile da aggiungere', 'info');
+                return;
+            }
+            
+            let taskOptions = availableTasks.map(task => 
+                `<div style="padding: 10px; margin: 5px 0; background: rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer;" onclick="addTaskToToday(${task.id}); this.parentElement.parentElement.remove();">
+                    ${task.text} <span style="opacity: 0.7;">(${task.difficulty})</span>
+                </div>`
+            ).join('');
+            
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                background: rgba(0,0,0,0.7); z-index: 1000; 
+                display: flex; align-items: center; justify-content: center; padding: 20px;
+            `;
+            
+            modal.innerHTML = `
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                           border-radius: 15px; padding: 20px; max-width: 400px; width: 100%; 
+                           max-height: 80vh; overflow-y: auto; color: white;">
+                    <h3 style="margin-bottom: 15px;">Aggiungi a Oggi</h3>
+                    ${taskOptions}
+                    <button style="width: 100%; margin-top: 15px; padding: 10px; background: rgba(244,67,54,0.2); 
+                                   border: 1px solid rgba(244,67,54,0.3); color: #f44336; border-radius: 8px;" 
+                            onclick="this.parentElement.parentElement.remove();">Annulla</button>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.remove();
+            });
+        }
+
+        function addTaskToToday(taskId) {
+            const task = appState.tasks.find(t => t.id === taskId);
+            if (task && !appState.todayTasks.find(t => t.id === taskId)) {
+                appState.todayTasks.push({...task});
+                saveTodayTasks();
+                updateTodayTasksList();
+                updateStats();
+                showNotification('📅 Faccenda aggiunta a oggi!', 'success');
+                hapticFeedback();
+            }
+        }
+
+        function removeTaskFromToday(taskId) {
+            appState.todayTasks = appState.todayTasks.filter(t => t.id !== taskId);
+            saveTodayTasks();
+            updateTodayTasksList();
+            updateStats();
+            hapticFeedback();
+        }
+
+        function updateTodayTasksList() {
+            renderTaskList(appState.todayTasks, 'todayTasksList', true);
+        }
+
+        function saveTodayTasks() {
+            localStorage.setItem('todayTasks', JSON.stringify(appState.todayTasks));
         }
 
         // Timer Functions
@@ -1136,18 +1436,40 @@
                 appState.tasks.push(task);
                 saveTasks();
                 renderTasks();
+                updateStats();
                 taskInput.value = '';
                 hapticFeedback();
                 showNotification('✅ Faccenda aggiunta!', 'success');
             }
         }
 
-        function toggleTask(taskId) {
-            const task = appState.tasks.find(t => t.id === taskId);
+        function toggleTask(taskId, isTodayList = false) {
+            let taskList = isTodayList ? appState.todayTasks : appState.tasks;
+            const task = taskList.find(t => t.id === taskId);
+            
             if (task) {
                 task.completed = !task.completed;
-                saveTasks();
+                
+                // Sincronizza tra le due liste
+                if (isTodayList) {
+                    const mainTask = appState.tasks.find(t => t.id === taskId);
+                    if (mainTask) {
+                        mainTask.completed = task.completed;
+                        saveTasks();
+                    }
+                    saveTodayTasks();
+                } else {
+                    const todayTask = appState.todayTasks.find(t => t.id === taskId);
+                    if (todayTask) {
+                        todayTask.completed = task.completed;
+                        saveTodayTasks();
+                    }
+                    saveTasks();
+                }
+                
                 renderTasks();
+                updateTodayTasksList();
+                updateStats();
                 hapticFeedback();
                 
                 if (task.completed) {
@@ -1156,47 +1478,192 @@
             }
         }
 
-        function deleteTask(taskId) {
-            const task = appState.tasks.find(t => t.id === taskId);
-            if (task && confirm(`Eliminare "${task.text}"?`)) {
-                appState.tasks = appState.tasks.filter(t => t.id !== taskId);
+        function deleteTask(taskId, isTodayList = false) {
+            if (isTodayList) {
+                const task = appState.todayTasks.find(t => t.id === taskId);
+                if (task && confirm(`Rimuovere "${task.text}" da oggi?`)) {
+                    removeTaskFromToday(taskId);
+                    showNotification('📅 Rimossa da oggi', 'info');
+                }
+            } else {
+                const task = appState.tasks.find(t => t.id === taskId);
+                if (task && confirm(`Eliminare definitivamente "${task.text}"?`)) {
+                    appState.tasks = appState.tasks.filter(t => t.id !== taskId);
+                    appState.todayTasks = appState.todayTasks.filter(t => t.id !== taskId);
+                    saveTasks();
+                    saveTodayTasks();
+                    renderTasks();
+                    updateTodayTasksList();
+                    updateStats();
+                    hapticFeedback('heavy');
+                    showNotification('🗑️ Faccenda eliminata', 'info');
+                }
+            }
+        }
+
+        function clearCompletedTasks() {
+            const completedTasks = appState.tasks.filter(t => t.completed);
+            if (completedTasks.length === 0) {
+                showNotification('🔍 Nessuna faccenda completata da rimuovere', 'info');
+                return;
+            }
+            
+            if (confirm(`Eliminare ${completedTasks.length} faccende completate?`)) {
+                appState.tasks = appState.tasks.filter(t => !t.completed);
+                appState.todayTasks = appState.todayTasks.filter(t => !t.completed);
                 saveTasks();
+                saveTodayTasks();
                 renderTasks();
+                updateTodayTasksList();
+                updateStats();
                 hapticFeedback('heavy');
-                showNotification('🗑️ Faccenda eliminata', 'info');
+                showNotification(`🗑️ ${completedTasks.length} faccende rimosse`, 'success');
             }
         }
 
         function renderTasks() {
-            const tasksList = document.getElementById('tasksList');
+            renderTaskList(appState.tasks, 'allTasksList', false);
+            document.getElementById('allTasksCount').textContent = `${appState.tasks.length} faccende`;
+        }
+
+        function renderTaskList(tasks, containerId, isTodayList) {
+            const tasksList = document.getElementById(containerId);
             tasksList.innerHTML = '';
             
-            if (appState.tasks.length === 0) {
+            if (tasks.length === 0) {
+                const emptyMessage = isTodayList ? 
+                    'Nessuna faccenda per oggi. Usa il pulsante + per aggiungerne.' :
+                    'Nessuna faccenda ancora! Aggiungi la tua prima faccenda per iniziare.';
+                    
                 tasksList.innerHTML = `
                     <div class="empty-state">
-                        <p>📝 Nessuna faccenda ancora!</p>
-                        <p>Aggiungi la tua prima faccenda per iniziare.</p>
+                        <p>📝 ${emptyMessage}</p>
                     </div>
                 `;
                 return;
             }
             
-            appState.tasks.forEach(task => {
+            tasks.forEach((task, index) => {
                 const taskElement = document.createElement('div');
                 taskElement.className = `task-item ${task.completed ? 'completed' : ''}`;
+                taskElement.draggable = true;
+                taskElement.dataset.taskId = task.id;
+                taskElement.dataset.taskIndex = index;
+                
+                const moveButtonHtml = isTodayList ? 
+                    `<button class="move-btn" onclick="removeTaskFromToday(${task.id})" title="Rimuovi da oggi">↩️</button>` :
+                    (appState.todayTasks.find(t => t.id === task.id) ? '' : 
+                     `<button class="move-btn" onclick="addTaskToToday(${task.id})" title="Aggiungi a oggi">📅</button>`);
                 
                 taskElement.innerHTML = `
                     <div class="task-content">
+                        <span class="drag-handle">⋮⋮</span>
                         <input type="checkbox" ${task.completed ? 'checked' : ''} 
-                               onchange="toggleTask(${task.id})">
+                               onchange="toggleTask(${task.id}, ${isTodayList})">
                         <div class="task-text">${task.text}</div>
                         <div class="difficulty-badge difficulty-${task.difficulty}">${task.difficulty}</div>
                     </div>
-                    <button class="delete-btn" onclick="deleteTask(${task.id})">🗑️</button>
+                    <div class="task-actions">
+                        ${moveButtonHtml}
+                        <button class="delete-btn" onclick="deleteTask(${task.id}, ${isTodayList})">🗑️</button>
+                    </div>
                 `;
+                
+                // Drag and drop events
+                taskElement.addEventListener('dragstart', handleDragStart);
+                taskElement.addEventListener('dragend', handleDragEnd);
                 
                 tasksList.appendChild(taskElement);
             });
+        }
+
+        // Drag and Drop Functions
+        function handleDragStart(e) {
+            appState.draggedTask = {
+                id: parseInt(e.target.dataset.taskId),
+                index: parseInt(e.target.dataset.taskIndex),
+                source: e.target.closest('#todayTasksList') ? 'today' : 'all'
+            };
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            const afterElement = getDragAfterElement(e.currentTarget, e.clientY);
+            const dragging = document.querySelector('.dragging');
+            
+            if (afterElement == null) {
+                e.currentTarget.appendChild(dragging);
+            } else {
+                e.currentTarget.insertBefore(dragging, afterElement);
+            }
+        }
+
+        function handleDrop(e, targetList) {
+            e.preventDefault();
+            
+            if (!appState.draggedTask) return;
+            
+            const { id, source } = appState.draggedTask;
+            
+            if (source === 'all' && targetList === 'today') {
+                addTaskToToday(id);
+            } else if (source === targetList) {
+                // Riordina nella stessa lista
+                reorderTasks(id, targetList);
+            }
+            
+            appState.draggedTask = null;
+        }
+
+        function reorderTasks(taskId, listType) {
+            const taskList = listType === 'today' ? appState.todayTasks : appState.tasks;
+            const draggedElement = document.querySelector('.dragging');
+            const allElements = [...document.querySelectorAll(`#${listType === 'today' ? 'todayTasksList' : 'allTasksList'} .task-item`)];
+            const newIndex = allElements.indexOf(draggedElement);
+            
+            const task = taskList.find(t => t.id === taskId);
+            if (!task) return;
+            
+            // Rimuovi dalla posizione corrente
+            const currentIndex = taskList.indexOf(task);
+            taskList.splice(currentIndex, 1);
+            
+            // Inserisci nella nuova posizione
+            taskList.splice(newIndex, 0, task);
+            
+            if (listType === 'today') {
+                saveTodayTasks();
+                updateTodayTasksList();
+            } else {
+                saveTasks();
+                renderTasks();
+            }
+            
+            hapticFeedback('light');
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.task-item:not(.dragging)')];
+            
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
 
         function saveTasks() {
@@ -1240,6 +1707,7 @@
                 appState.habits.push(habit);
                 saveHabits();
                 renderHabits();
+                updateStats();
                 habitInput.value = '';
                 hapticFeedback();
                 showNotification('🌟 Abitudine aggiunta!', 'success');
@@ -1276,6 +1744,7 @@
                 
                 saveHabits();
                 renderHabits();
+                updateStats();
                 hapticFeedback();
                 
                 if (!wasCompleted) {
@@ -1308,6 +1777,7 @@
                 appState.habits = appState.habits.filter(h => h.id !== habitId);
                 saveHabits();
                 renderHabits();
+                updateStats();
                 hapticFeedback('heavy');
                 showNotification('🗑️ Abitudine eliminata', 'info');
             }
@@ -1498,7 +1968,7 @@
 
             // Restore last active tab
             const lastTab = localStorage.getItem('lastActiveTab');
-            if (lastTab) {
+            if (lastTab && lastTab !== 'timer') {
                 const tabButton = document.querySelector(`[data-tab="${lastTab}"]`);
                 if (tabButton) {
                     tabButton.click();
