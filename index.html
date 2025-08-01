@@ -1395,10 +1395,32 @@
 
         // Initialize App
         document.addEventListener('DOMContentLoaded', () => {
-            initializeApp();
+            // Piccolo delay per assicurarsi che tutto sia caricato
+            setTimeout(() => {
+                initializeApp();
+            }, 100);
         });
 
+        // Fallback se DOMContentLoaded è già passato
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(() => {
+                    initializeApp();
+                }, 100);
+            });
+        } else {
+            setTimeout(() => {
+                initializeApp();
+            }, 100);
+        }
+
         function initializeApp() {
+            // Carica i dati salvati
+            loadSavedData();
+            
+            // Debug degli elementi (rimuovi in produzione)
+            debugElements();
+            
             initializePWA();
             initializeTimer();
             initializeTasks();
@@ -1409,4 +1431,50 @@
             initializeBackup();
             loadSettings();
             console.log('🎯 App inizializzata correttamente!');
+        }
+
+        // Funzione per caricare i dati salvati
+        function loadSavedData() {
+            try {
+                const savedTasks = localStorage.getItem('tasks');
+                const savedTodayTasks = localStorage.getItem('todayTasks');
+                const savedShoppingList = localStorage.getItem('shoppingList');
+                const savedHabits = localStorage.getItem('habits');
+
+                if (savedTasks) {
+                    appState.tasks = JSON.parse(savedTasks);
+                }
+                if (savedTodayTasks) {
+                    appState.todayTasks = JSON.parse(savedTodayTasks);
+                }
+                if (savedShoppingList) {
+                    appState.shoppingList = JSON.parse(savedShoppingList);
+                }
+                if (savedHabits) {
+                    appState.habits = JSON.parse(savedHabits);
+                }
+
+                console.log('📦 Dati caricati dal localStorage');
+            } catch (error) {
+                console.error('❌ Errore nel caricamento dei dati:', error);
+            }
+        }
+
+        // Funzione di debug per verificare gli elementi
+        function debugElements() {
+            const elements = [
+                'installBtn', 'dismissBtn', 'workTime', 'restTime', 'startBtn', 
+                'pauseBtn', 'switchBtn', 'resetBtn', 'manualMode', 'taskInput', 
+                'addTaskBtn', 'shoppingInput', 'addShoppingBtn', 'habitInput', 
+                'addHabitBtn', 'todayTasksList', 'homeShoppingList'
+            ];
+            
+            elements.forEach(id => {
+                const element = document.getElementById(id);
+                if (!element) {
+                    console.warn(`⚠️ Elemento mancante: ${id}`);
+                } else {
+                    console.log(`✅ Elemento trovato: ${id}`);
+                }
+            });
         }
