@@ -1,5 +1,1591 @@
-<!DOCTYPE html>
-<html lang="it"> 
+        function initializeApp() {
+            initializePWA();
+            initializeTimer();
+            initializeTasks();
+            initializeShopping();
+            initializeHabits();
+            initializeTabs();
+            initializeHome();
+            initializeBackup();
+            loadSettings();
+            console.log('🎯 App inizializzata correttamente!');
+        }
+
+        // Timer Functions
+        function initializeTimer() {
+            backgroundTimer = new BackgroundTimer();
+
+            const elements = {
+                workTime: document.getElementById('workTime'),
+                restTime: document.getElementById('restTime'),
+                startBtn: document.getElementById('startBtn'),
+                pauseBtn: document.getElementById('pauseBtn'),
+                switchBtn: document.getElementById('switchBtn'),
+                resetBtn: document.getElementById('resetBtn'),
+                manualMode: document.getElementById('manualMode')
+            };
+
+            elements.startBtn.addEventListener('click', startTimer);
+            elements.pauseBtn.addEventListener('click', pauseTimer);
+            elements.switchBtn.addEventListener('click', switchTimerMode);
+            elements.resetBtn.addEventListener('click', resetTimer);
+            elements.manualMode.addEventListener('change', (e) => {
+                backgroundTimer.manualMode = e.target.checked;
+                saveSettings();
+            });
+
+            elements.workTime.addEventListener('change', () => {
+                if (!backgroundTimer.isRunning && backgroundTimer.isWorkTime) {
+                    backgroundTimer.duration = elements.workTime.value * 60;
+                    backgroundTimer.updateDisplay();
+                }
+                saveSettings();
+            });
+
+            elements.restTime.addEventListener('change', saveSettings);
+            backgroundTimer.updateDisplay();
+        }
+
+        function startTimer() {
+            const workTime = document.getElementById('workTime').value;
+            const restTime = document.getElementById('restTime').value;
+            const duration = backgroundTimer.isWorkTime ? workTime * 60 : restTime * 60;
+
+            backgroundTimer.start(duration);
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('pauseBtn').disabled = false;
+            document.getElementById('switchBtn').disabled = false;
+            hapticFeedback();
+            showNotification('⏰ Timer avviato!', 'success');
+        }
+
+        function pauseTimer() {
+            backgroundTimer.pause();
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('switchBtn').disabled = true;
+            hapticFeedback();
+        }
+
+        function resetTimer() {
+            backgroundTimer.reset();
+            const workTime = document.getElementById('workTime').value;
+            backgroundTimer.duration = workTime * 60;
+            backgroundTimer.updateDisplay();
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('switchBtn').disabled = true;
+            hapticFeedback();
+        }
+
+        function switchTimerMode() {
+            backgroundTimer.switch();
+            hapticFeedback();
+        }
+
+        // Tasks Functions
+        function initializeTasks() {
+            document.getElementById('addTaskBtn').addEventListener('click', addTask);
+            document.getElementById('taskInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addTask();
+            });
+            renderTasks();
+        }
+
+        function addTask() {
+            const taskInput = document.getElementById('taskInput');
+            const difficultySelect = document.getElementById('difficultySelect');
+            const taskText = taskInput.value.trim();
+
+            if (taskText) {
+                const task = {
+                    id: Date.now(),
+                    text: taskText,
+                    difficulty: difficultySelect.value,
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                };
+
+                appState.tasks.push(task);
+                saveTasks();
+                renderTasks();
+                updateStats();
+                updateBackupStats();
+                taskInput.value = '';
+                hapticFeedback();
+                showNotification('✅ Faccenda aggiunta!', 'success');
+            }
+        }
+
+        // Shopping Functions  
+        function initializeShopping() {
+            document.getElementById('addShoppingBtn').addEventListener('click', addShoppingItem);
+            document.getElementById('shoppingInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addShoppingItem();
+            });
+            renderShoppingList();
+        }
+
+        function addShoppingItem() {
+            const itemInput = document.getElementById('shoppingInput');
+            const quantityInput = document.getElementById('quantityInput');
+            const categorySelect = document.getElementById('categorySelect');
+            const itemText = itemInput.value.trim();
+            const quantity = parseInt(quantityInput.value) || 1;
+
+            if (itemText) {
+                const item = {
+                    id: Date.now(),
+                    text: itemText,
+                    quantity: quantity,
+                    category: categorySelect.value,
+                    purchased: false,
+                    createdAt: new Date().toISOString()
+                };
+
+                appState.shoppingList.push(item);
+                saveShoppingList();
+                renderShoppingList();
+                updateHomeShoppingList();
+                updateStats();
+                updateBackupStats();
+
+                itemInput.value = '';
+                quantityInput.value = '1';
+                hapticFeedback();
+                showNotification('🛒 Articolo aggiunto alla lista!', 'success');
+            }
+        }
+
+        // Habits Functions
+        function initializeHabits() {
+            document.getElementById('addHabitBtn').addEventListener('click', addHabit);
+            document.getElementById('habitInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addHabit();
+            });
+
+            document.getElementById('prevMonthBtn').addEventListener('click', () => changeMonth(-1));
+            document.getElementById('nextMonthBtn').addEventListener('click', () => changeMonth(1));
+
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.addEventListener('click', () => selectColor(option));
+            });
+
+            updateMonthDisplay();
+            renderHabits();
+        }
+
+        function addHabit() {
+            const habitInput = document.getElementById('habitInput');
+            const frequencySelect = document.getElementById('frequencySelect');
+            const habitText = habitInput.value.trim();
+
+            if (habitText) {
+                const habit = {
+                    id: Date.now(),
+                    text: habitText,
+                    frequency: frequencySelect.value,
+                    color: appState.selectedColor,
+                    completedDays: {},
+                    createdAt: new Date().toISOString()
+                };
+
+                appState.habits.push(habit);
+                saveHabits();
+                renderHabits();
+                updateStats();
+                updateBackupStats();
+                habitInput.value = '';
+                hapticFeedback();
+                showNotification('🌟 Abitudine aggiunta!', 'success');
+            }
+        }
+
+        // PWA Functions
+        function initializePWA() {
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                appState.deferredPrompt = e;
+                showInstallBanner();
+            });
+
+            document.getElementById('installBtn').addEventListener('click', installApp);
+            document.getElementById('dismissBtn').addEventListener('click', hideInstallBanner);
+
+            setTimeout(() => {
+                if (appState.deferredPrompt && !localStorage.getItem('pwa-dismissed')) {
+                    showInstallBanner();
+                }
+            }, 5000);
+            
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('sw.js')
+                        .then(registration => {
+                            console.log('Service Worker registrato:', registration);
+                        })
+                        .catch(error => {
+                            console.log('Registrazione Service Worker fallita:', error);
+                        });
+                });
+            }
+        }
+
+        function showInstallBanner() {
+            if (!localStorage.getItem('pwa-dismissed')) {
+                document.getElementById('installBanner').classList.add('show');
+            }
+        }
+
+        function hideInstallBanner() {
+            document.getElementById('installBanner').classList.remove('show');
+            localStorage.setItem('pwa-dismissed', 'true');
+        }
+
+        async function installApp() {
+            if (!appState.deferredPrompt) return;
+            appState.deferredPrompt.prompt();
+            const { outcome } = await appState.deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                showNotification('📱 App installata!', 'success');
+            }
+            appState.deferredPrompt = null;
+            hideInstallBanner();
+        }
+
+        // Timer Functions
+        function initializeTimer() {
+            backgroundTimer = new BackgroundTimer();
+
+            const elements = {
+                workTime: document.getElementById('workTime'),
+                restTime: document.getElementById('restTime'),
+                startBtn: document.getElementById('startBtn'),
+                pauseBtn: document.getElementById('pauseBtn'),
+                switchBtn: document.getElementById('switchBtn'),
+                resetBtn: document.getElementById('resetBtn'),
+                manualMode: document.getElementById('manualMode')
+            };
+
+            elements.startBtn.addEventListener('click', startTimer);
+            elements.pauseBtn.addEventListener('click', pauseTimer);
+            elements.switchBtn.addEventListener('click', switchTimerMode);
+            elements.resetBtn.addEventListener('click', resetTimer);
+            elements.manualMode.addEventListener('change', (e) => {
+                backgroundTimer.manualMode = e.target.checked;
+                saveSettings();
+            });
+
+            elements.workTime.addEventListener('change', () => {
+                if (!backgroundTimer.isRunning && backgroundTimer.isWorkTime) {
+                    backgroundTimer.duration = elements.workTime.value * 60;
+                    backgroundTimer.updateDisplay();
+                }
+                saveSettings();
+            });
+
+            elements.restTime.addEventListener('change', saveSettings);
+            backgroundTimer.updateDisplay();
+        }
+
+        function startTimer() {
+            const workTime = document.getElementById('workTime').value;
+            const restTime = document.getElementById('restTime').value;
+            const duration = backgroundTimer.isWorkTime ? workTime * 60 : restTime * 60;
+
+            backgroundTimer.start(duration);
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('pauseBtn').disabled = false;
+            document.getElementById('switchBtn').disabled = false;
+            hapticFeedback();
+            showNotification('⏰ Timer avviato!', 'success');
+        }
+
+        function pauseTimer() {
+            backgroundTimer.pause();
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('switchBtn').disabled = true;
+            hapticFeedback();
+        }
+
+        function resetTimer() {
+            backgroundTimer.reset();
+            const workTime = document.getElementById('workTime').value;
+            backgroundTimer.duration = workTime * 60;
+            backgroundTimer.updateDisplay();
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('switchBtn').disabled = true;
+            hapticFeedback();
+        }
+
+        function switchTimerMode() {
+            backgroundTimer.switch();
+            hapticFeedback();
+        }
+
+        // Tasks Functions
+        function initializeTasks() {
+            document.getElementById('addTaskBtn').addEventListener('click', addTask);
+            document.getElementById('taskInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addTask();
+            });
+            renderTasks();
+        }
+
+        function addTask() {
+            const taskInput = document.getElementById('taskInput');
+            const difficultySelect = document.getElementById('difficultySelect');
+            const taskText = taskInput.value.trim();
+
+            if (taskText) {
+                const task = {
+                    id: Date.now(),
+                    text: taskText,
+                    difficulty: difficultySelect.value,
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                };
+
+                appState.tasks.push(task);
+                saveTasks();
+                renderTasks();
+                updateStats();
+                updateBackupStats();
+                taskInput.value = '';
+                hapticFeedback();
+                showNotification('✅ Faccenda aggiunta!', 'success');
+            }
+        }
+
+        function toggleTask(taskId, isTodayList = false) {
+            let taskList = isTodayList ? appState.todayTasks : appState.tasks;
+            const task = taskList.find(t => t.id === taskId);
+
+            if (task) {
+                task.completed = !task.completed;
+
+                if (isTodayList) {
+                    const mainTask = appState.tasks.find(t => t.id === taskId);
+                    if (mainTask) {
+                        mainTask.completed = task.completed;
+                        saveTasks();
+                    }
+                    saveTodayTasks();
+                } else {
+                    const todayTask = appState.todayTasks.find(t => t.id === taskId);
+                    if (todayTask) {
+                        todayTask.completed = task.completed;
+                        saveTodayTasks();
+                    }
+                    saveTasks();
+                }
+
+                renderTasks();
+                updateTodayTasksList();
+                updateStats();
+                hapticFeedback();
+
+                if (task.completed) {
+                    showNotification('🎉 Faccenda completata!', 'success');
+                }
+            }
+        }
+
+        function deleteTask(taskId, isTodayList = false) {
+            if (isTodayList) {
+                const task = appState.todayTasks.find(t => t.id === taskId);
+                if (task && confirm(`Rimuovere "${task.text}" da oggi?`)) {
+                    removeTaskFromToday(taskId);
+                    showNotification('📅 Rimossa da oggi', 'info');
+                }
+            } else {
+                const task = appState.tasks.find(t => t.id === taskId);
+                if (task && confirm(`Eliminare definitivamente "${task.text}"?`)) {
+                    appState.tasks = appState.tasks.filter(t => t.id !== taskId);
+                    appState.todayTasks = appState.todayTasks.filter(t => t.id !== taskId);
+                    saveTasks();
+                    saveTodayTasks();
+                    renderTasks();
+                    updateTodayTasksList();
+                    updateStats();
+                    updateBackupStats();
+                    hapticFeedback('heavy');
+                    showNotification('🗑️ Faccenda eliminata', 'info');
+                }
+            }
+        }
+
+        function clearCompletedTasks() {
+            const completedTasks = appState.tasks.filter(t => t.completed);
+            if (completedTasks.length === 0) {
+                showNotification('🔍 Nessuna faccenda completata da rimuovere', 'info');
+                return;
+            }
+
+            if (confirm(`Eliminare ${completedTasks.length} faccende completate?`)) {
+                appState.tasks = appState.tasks.filter(t => !t.completed);
+                appState.todayTasks = appState.todayTasks.filter(t => !t.completed);
+                saveTasks();
+                saveTodayTasks();
+                renderTasks();
+                updateTodayTasksList();
+                updateStats();
+                updateBackupStats();
+                hapticFeedback('heavy');
+                showNotification(`🗑️ ${completedTasks.length} faccende rimosse`, 'success');
+            }
+        }
+
+        function renderTasks() {
+            renderTaskList(appState.tasks, 'allTasksList', false);
+            document.getElementById('allTasksCount').textContent = `${appState.tasks.length} faccende`;
+        }
+
+        function renderTaskList(tasks, containerId, isTodayList) {
+            const tasksList = document.getElementById(containerId);
+            tasksList.innerHTML = '';
+
+            if (tasks.length === 0) {
+                const emptyMessage = isTodayList ?
+                    'Nessuna faccenda per oggi. Usa "Aggiungi Rapidamente" sopra o il pulsante + per aggiungerne.' :
+                    'Nessuna faccenda ancora! Aggiungi la tua prima faccenda per iniziare.';
+
+                tasksList.innerHTML = `
+                    <div class="empty-state">
+                        <p>📝 ${emptyMessage}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            tasks.forEach((task, index) => {
+                const taskElement = document.createElement('div');
+                taskElement.className = `task-item ${task.completed ? 'completed' : ''}`;
+                taskElement.draggable = true;
+                taskElement.dataset.taskId = task.id;
+                taskElement.dataset.taskIndex = index;
+
+                const moveButtonHtml = isTodayList ?
+                    `<button class="move-btn" onclick="removeTaskFromToday(${task.id})" title="Rimuovi da oggi">↩️</button>` :
+                    (appState.todayTasks.find(t => t.id === task.id) ? '' :
+                        `<button class="move-btn" onclick="addTaskToToday(${task.id})" title="Aggiungi a oggi">📅</button>`);
+
+                taskElement.innerHTML = `
+                    <div class="task-content">
+                        <span class="drag-handle">⋮⋮</span>
+                        <input type="checkbox" ${task.completed ? 'checked' : ''} 
+                               onchange="toggleTask(${task.id}, ${isTodayList})">
+                        <div class="task-text">${task.text}</div>
+                        <div class="difficulty-badge difficulty-${task.difficulty}">${task.difficulty}</div>
+                    </div>
+                    <div class="task-actions">
+                        ${moveButtonHtml}
+                        <button class="delete-btn" onclick="deleteTask(${task.id}, ${isTodayList})">🗑️</button>
+                    </div>
+                `;
+
+                taskElement.addEventListener('dragstart', handleDragStart);
+                taskElement.addEventListener('dragend', handleDragEnd);
+                tasksList.appendChild(taskElement);
+            });
+        }
+
+        function handleDragStart(e) {
+            appState.draggedTask = {
+                id: parseInt(e.target.dataset.taskId),
+                index: parseInt(e.target.dataset.taskIndex),
+                source: e.target.closest('#todayTasksList') ? 'today' : 'all'
+            };
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        function handleDrop(e, targetList) {
+            e.preventDefault();
+            if (!appState.draggedTask) return;
+            const { id, source } = appState.draggedTask;
+            if (source === 'all' && targetList === 'today') {
+                addTaskToToday(id);
+            }
+            appState.draggedTask = null;
+        }
+
+        function saveTasks() {
+            localStorage.setItem('tasks', JSON.stringify(appState.tasks));
+        }
+
+        // Shopping Functions
+        function initializeShopping() {
+            document.getElementById('addShoppingBtn').addEventListener('click', addShoppingItem);
+            document.getElementById('shoppingInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addShoppingItem();
+            });
+            renderShoppingList();
+        }
+
+        function addShoppingItem() {
+            const itemInput = document.getElementById('shoppingInput');
+            const quantityInput = document.getElementById('quantityInput');
+            const categorySelect = document.getElementById('categorySelect');
+            const itemText = itemInput.value.trim();
+            const quantity = parseInt(quantityInput.value) || 1;
+
+            if (itemText) {
+                const item = {
+                    id: Date.now(),
+                    text: itemText,
+                    quantity: quantity,
+                    category: categorySelect.value,
+                    purchased: false,
+                    createdAt: new Date().toISOString()
+                };
+
+                appState.shoppingList.push(item);
+                saveShoppingList();
+                renderShoppingList();
+                updateHomeShoppingList();
+                updateStats();
+                updateBackupStats();
+
+                itemInput.value = '';
+                quantityInput.value = '1';
+                hapticFeedback();
+                showNotification('🛒 Articolo aggiunto alla lista!', 'success');
+            }
+        }
+
+        function toggleShoppingItem(itemId) {
+            const item = appState.shoppingList.find(i => i.id === itemId);
+            if (item) {
+                item.purchased = !item.purchased;
+                saveShoppingList();
+                renderShoppingList();
+                updateHomeShoppingList();
+                hapticFeedback();
+                if (item.purchased) {
+                    showNotification(`✅ ${item.text} acquistato!`, 'success');
+                }
+            }
+        }
+
+        function deleteShoppingItem(itemId) {
+            const item = appState.shoppingList.find(i => i.id === itemId);
+            if (item && confirm(`Eliminare "${item.text}" dalla lista?`)) {
+                appState.shoppingList = appState.shoppingList.filter(i => i.id !== itemId);
+                saveShoppingList();
+                renderShoppingList();
+                updateHomeShoppingList();
+                updateStats();
+                updateBackupStats();
+                hapticFeedback('heavy');
+                showNotification('🗑️ Articolo rimosso', 'info');
+            }
+        }
+
+        function clearPurchasedItems() {
+            const purchasedItems = appState.shoppingList.filter(i => i.purchased);
+            if (purchasedItems.length === 0) {
+                showNotification('🔍 Nessun articolo acquistato da rimuovere', 'info');
+                return;
+            }
+
+            if (confirm(`Rimuovere ${purchasedItems.length} articoli acquistati?`)) {
+                appState.shoppingList = appState.shoppingList.filter(i => !i.purchased);
+                saveShoppingList();
+                renderShoppingList();
+                updateHomeShoppingList();
+                updateStats();
+                updateBackupStats();
+                hapticFeedback('heavy');
+                showNotification(`🗑️ ${purchasedItems.length} articoli rimossi`, 'success');
+            }
+        }
+
+        function renderShoppingList() {
+            const shoppingList = document.getElementById('shoppingList');
+            shoppingList.innerHTML = '';
+
+            if (appState.shoppingList.length === 0) {
+                shoppingList.innerHTML = `
+                    <div class="empty-state">
+                        <p>🛒 Nessun articolo nella lista!</p>
+                        <p>Aggiungi il tuo primo articolo per iniziare.</p>
+                    </div>
+                `;
+                document.getElementById('shoppingCount').textContent = '0 articoli';
+                return;
+            }
+
+            const categories = {
+                alimentari: appState.shoppingList.filter(item => item.category === 'alimentari'),
+                igiene: appState.shoppingList.filter(item => item.category === 'igiene'),
+                casa: appState.shoppingList.filter(item => item.category === 'casa'),
+                altro: appState.shoppingList.filter(item => item.category === 'altro')
+            };
+
+            const categoryIcons = {
+                alimentari: '🥕',
+                igiene: '🧴',
+                casa: '🏠',
+                altro: '📦'
+            };
+
+            Object.entries(categories).forEach(([category, items]) => {
+                if (items.length === 0) return;
+
+                const categoryHeader = document.createElement('div');
+                categoryHeader.style.cssText = `
+                    font-weight: bold;
+                    margin: 20px 0 10px 0;
+                    padding: 8px 12px;
+                    background: rgba(255,255,255,0.1);
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                `;
+                categoryHeader.innerHTML = `${categoryIcons[category]} ${category.charAt(0).toUpperCase() + category.slice(1)} (${items.length})`;
+                shoppingList.appendChild(categoryHeader);
+
+                items.forEach(item => {
+                    const itemElement = document.createElement('div');
+                    itemElement.className = `shopping-item ${item.purchased ? 'purchased' : ''}`;
+
+                    itemElement.innerHTML = `
+                        <div class="shopping-item-content">
+                            <input type="checkbox" ${item.purchased ? 'checked' : ''} 
+                                   onchange="toggleShoppingItem(${item.id})">
+                            <div class="shopping-quantity">${item.quantity}</div>
+                            <div class="task-text">${item.text}</div>
+                        </div>
+                        <div class="task-actions">
+                            <button class="delete-btn" onclick="deleteShoppingItem(${item.id})">🗑️</button>
+                        </div>
+                    `;
+
+                    shoppingList.appendChild(itemElement);
+                });
+            });
+
+            const totalItems = appState.shoppingList.length;
+            const purchasedItems = appState.shoppingList.filter(i => i.purchased).length;
+            document.getElementById('shoppingCount').textContent = `${totalItems} articoli (${purchasedItems} acquistati)`;
+        }
+
+        function saveShoppingList() {
+            localStorage.setItem('shoppingList', JSON.stringify(appState.shoppingList));
+        }
+
+        // Habits Functions
+        function initializeHabits() {
+            document.getElementById('addHabitBtn').addEventListener('click', addHabit);
+            document.getElementById('habitInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addHabit();
+            });
+
+            document.getElementById('prevMonthBtn').addEventListener('click', () => changeMonth(-1));
+            document.getElementById('nextMonthBtn').addEventListener('click', () => changeMonth(1));
+
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.addEventListener('click', () => selectColor(option));
+            });
+
+            updateMonthDisplay();
+            renderHabits();
+        }
+
+        function addHabit() {
+            const habitInput = document.getElementById('habitInput');
+            const frequencySelect = document.getElementById('frequencySelect');
+            const habitText = habitInput.value.trim();
+
+            if (habitText) {
+                const habit = {
+                    id: Date.now(),
+                    text: habitText,
+                    frequency: frequencySelect.value,
+                    color: appState.selectedColor,
+                    completedDays: {},
+                    createdAt: new Date().toISOString()
+                };
+
+                appState.habits.push(habit);
+                saveHabits();
+                renderHabits();
+                updateStats();
+                updateBackupStats();
+                habitInput.value = '';
+                hapticFeedback();
+                showNotification('🌟 Abitudine aggiunta!', 'success');
+            }
+        }
+
+        function selectColor(selectedOption) {
+            document.querySelectorAll('.color-option').forEach(option => option.classList.remove('selected'));
+            selectedOption.classList.add('selected');
+            appState.selectedColor = selectedOption.dataset.color;
+            hapticFeedback('light');
+        }
+
+        function toggleHabitDay(habitId, dayKey) {
+            const habit = appState.habits.find(h => h.id === habitId);
+            if (habit) {
+                const dayDate = new Date(dayKey);
+                const today = new Date();
+                today.setHours(23, 59, 59, 999);
+
+                if (dayDate > today) {
+                    showNotification('⚠️ Non puoi segnare giorni futuri!', 'error');
+                    return;
+                }
+
+                const wasCompleted = habit.completedDays[dayKey];
+
+                if (wasCompleted) {
+                    delete habit.completedDays[dayKey];
+                } else {
+                    habit.completedDays[dayKey] = true;
+                }
+
+                saveHabits();
+                renderHabits();
+                updateStats();
+                hapticFeedback();
+
+                if (!wasCompleted) {
+                    showNotification(`✅ ${habit.text} completata!`, 'success');
+                }
+            }
+        }
+
+        function deleteHabit(habitId) {
+            const habit = appState.habits.find(h => h.id === habitId);
+            if (habit && confirm(`Eliminare "${habit.text}"?`)) {
+                appState.habits = appState.habits.filter(h => h.id !== habitId);
+                saveHabits();
+                renderHabits();
+                updateStats();
+                updateBackupStats();
+                hapticFeedback('heavy');
+                showNotification('🗑️ Abitudine eliminata', 'info');
+            }
+        }
+
+        function changeMonth(direction) {
+            appState.viewDate.setMonth(appState.viewDate.getMonth() + direction);
+            updateMonthDisplay();
+            renderHabits();
+            hapticFeedback('light');
+        }
+
+        function updateMonthDisplay() {
+            const options = { year: 'numeric', month: 'long' };
+            document.getElementById('currentMonth').textContent =
+                appState.viewDate.toLocaleDateString('it-IT', options);
+        }
+
+        function getDaysInMonth(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const days = [];
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                days.push(new Date(year, month, day));
+            }
+
+            return days;
+        }
+
+        function renderHabits() {
+            const habitsList = document.getElementById('habitsList');
+            habitsList.innerHTML = '';
+
+            if (appState.habits.length === 0) {
+                habitsList.innerHTML = `
+                    <div class="empty-state">
+                        <p>🌱 Nessuna abitudine ancora!</p>
+                        <p>Aggiungi la tua prima abitudine per iniziare.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            appState.habits.forEach(habit => {
+                const days = getDaysInMonth(appState.viewDate);
+                const today = new Date();
+                const todayStr = today.toISOString().split('T')[0];
+
+                const habitCard = document.createElement('div');
+                habitCard.className = 'habit-card';
+                habitCard.style.setProperty('--habit-color', habit.color);
+
+                const daysGrid = days.map(day => {
+                    const dayStr = day.toISOString().split('T')[0];
+                    const isCompleted = habit.completedDays[dayStr];
+                    const isToday = dayStr === todayStr;
+                    const isFuture = day > today;
+
+                    let classes = 'day-cell';
+                    if (isCompleted) classes += ' completed';
+                    if (isToday) classes += ' today';
+                    if (isFuture) classes += ' future';
+
+                    return `
+                        <div class="${classes}" 
+                             onclick="toggleHabitDay(${habit.id}, '${dayStr}')"
+                             style="--habit-color: ${habit.color}">
+                            ${day.getDate()}
+                        </div>
+                    `;
+                }).join('');
+
+                habitCard.innerHTML = `
+                    <div class="habit-header">
+                        <div class="habit-title">
+                            <span class="habit-icon" style="background-color: ${habit.color}"></span>
+                            ${habit.text}
+                        </div>
+                        <button class="delete-btn" onclick="deleteHabit(${habit.id})">🗑️</button>
+                    </div>
+                    <div class="days-grid">
+                        ${daysGrid}
+                    </div>
+                `;
+
+                habitsList.appendChild(habitCard);
+            });
+        }
+
+        function saveHabits() {
+            localStorage.setItem('habits', JSON.stringify(appState.habits));
+        }
+
+        // Tab Functions
+        function initializeTabs() {
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTab = button.dataset.tab;
+
+                    document.querySelectorAll('.tab-button').forEach(btn =>
+                        btn.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(content =>
+                        content.classList.remove('active'));
+
+                    button.classList.add('active');
+                    document.getElementById(`${targetTab}-tab`).classList.add('active');
+
+                    hapticFeedback('light');
+                    localStorage.setItem('lastActiveTab', targetTab);
+                });
+            });
+
+            const lastTab = localStorage.getItem('lastActiveTab');
+            if (lastTab && lastTab !== 'timer') {
+                const tabButton = document.querySelector(`[data-tab="${lastTab}"]`);
+                if (tabButton) {
+                    tabButton.click();
+                }
+            }
+        }
+
+        // Home Functions
+        function initializeHome() {
+            updateTodayTasksList();
+            updateHomeShoppingList();
+            updateStats();
+        }
+
+        function showQuickAddModal() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">⚡ Aggiungi Rapidamente</div>
+                    <div class="modal-form">
+                        <input type="text" class="modal-input" id="modalTaskInput" placeholder="Cosa devi fare oggi?">
+                        <select class="modal-select" id="modalDifficultySelect">
+                            <option value="facile">Facile</option>
+                            <option value="medio">Medio</option>
+                            <option value="difficile">Difficile</option>
+                        </select>
+                        <p style="opacity: 0.8; font-size: 0.9em; text-align: center;">
+                            💡 Verrà aggiunta sia a "Oggi" che alle "Faccende totali"
+                        </p>
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="modal-btn modal-btn-primary" onclick="confirmQuickAdd()">➕ Aggiungi</button>
+                        <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Annulla</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            document.getElementById('modalTaskInput').focus();
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+            document.getElementById('modalTaskInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') confirmQuickAdd();
+            });
+        }
+
+        function showQuickShoppingModal() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">🛒 Aggiungi alla Spesa</div>
+                    <div class="modal-form">
+                        <input type="text" class="modal-input" id="modalShoppingInput" placeholder="Cosa devi comprare?">
+                        <input type="number" class="modal-input" id="modalQuantityInput" placeholder="Quantità" min="1" value="1">
+                        <select class="modal-select" id="modalCategorySelect">
+                            <option value="alimentari">🥕 Alimentari</option>
+                            <option value="igiene">🧴 Igiene</option>
+                            <option value="casa">🏠 Casa</option>
+                            <option value="altro">📦 Altro</option>
+                        </select>
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="modal-btn modal-btn-primary" onclick="confirmQuickShopping()">➕ Aggiungi</button>
+                        <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Annulla</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            document.getElementById('modalShoppingInput').focus();
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+            document.getElementById('modalShoppingInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') confirmQuickShopping();
+            });
+        }
+
+        function confirmQuickAdd() {
+            const taskInput = document.getElementById('modalTaskInput');
+            const difficultySelect = document.getElementById('modalDifficultySelect');
+            const taskText = taskInput.value.trim();
+
+            if (taskText) {
+                const task = {
+                    id: Date.now(),
+                    text: taskText,
+                    difficulty: difficultySelect.value,
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                };
+
+                appState.tasks.push(task);
+                saveTasks();
+                appState.todayTasks.push({...task});
+                saveTodayTasks();
+
+                renderTasks();
+                updateTodayTasksList();
+                updateStats();
+                updateBackupStats();
+
+                closeModal();
+                hapticFeedback();
+                showNotification('⚡ Faccenda aggiunta a oggi e alle totali!', 'success');
+            }
+        }
+
+        function confirmQuickShopping() {
+            const itemInput = document.getElementById('modalShoppingInput');
+            const quantityInput = document.getElementById('modalQuantityInput');
+            const categorySelect = document.getElementById('modalCategorySelect');
+            const itemText = itemInput.value.trim();
+            const quantity = parseInt(quantityInput.value) || 1;
+
+            if (itemText) {
+                const item = {
+                    id: Date.now(),
+                    text: itemText,
+                    quantity: quantity,
+                    category: categorySelect.value,
+                    purchased: false,
+                    createdAt: new Date().toISOString()
+                };
+
+                appState.shoppingList.push(item);
+                saveShoppingList();
+                updateHomeShoppingList();
+                renderShoppingList();
+                updateStats();
+                updateBackupStats();
+
+                closeModal();
+                hapticFeedback();
+                showNotification('🛒 Articolo aggiunto alla lista!', 'success');
+            }
+        }
+
+        function closeModal() {
+            const modal = document.querySelector('.modal-overlay');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        function switchToTab(tabName) {
+            const tabButton = document.querySelector(`[data-tab="${tabName}"]`);
+            if (tabButton) {
+                tabButton.click();
+            }
+        }
+
+        function updateHomeShoppingList() {
+            const homeShoppingList = document.getElementById('homeShoppingList');
+            homeShoppingList.innerHTML = '';
+
+            const unPurchasedItems = appState.shoppingList.filter(item => !item.purchased).slice(0, 5);
+
+            if (unPurchasedItems.length === 0) {
+                homeShoppingList.innerHTML = `
+                    <div class="empty-state" style="padding: 20px;">
+                        <p>🛒 Nessun articolo nella lista!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            unPurchasedItems.forEach(item => {
+                const itemElement = document.createElement('div');
+                itemElement.className = `home-shopping-item ${item.purchased ? 'purchased' : ''}`;
+
+                const categoryIcons = {
+                    alimentari: '🥕',
+                    igiene: '🧴',
+                    casa: '🏠',
+                    altro: '📦'
+                };
+
+                itemElement.innerHTML = `
+                    <div class="home-shopping-content">
+                        <input type="checkbox" ${item.purchased ? 'checked' : ''} 
+                               onchange="toggleShoppingItem(${item.id}); updateHomeShoppingList();">
+                        <span>${categoryIcons[item.category]}</span>
+                        <div class="shopping-quantity">${item.quantity}</div>
+                        <div class="task-text">${item.text}</div>
+                    </div>
+                    <div class="home-shopping-actions">
+                        <button class="delete-btn" onclick="deleteShoppingItem(${item.id}); updateHomeShoppingList();" style="width: 28px; height: 28px; font-size: 1em;">🗑️</button>
+                    </div>
+                `;
+
+                homeShoppingList.appendChild(itemElement);
+            });
+
+            const totalItems = appState.shoppingList.filter(item => !item.purchased).length;
+            if (totalItems > 5) {
+                const moreIndicator = document.createElement('div');
+                moreIndicator.style.cssText = `
+                    text-align: center; 
+                    padding: 10px; 
+                    opacity: 0.7; 
+                    font-size: 0.9em;
+                `;
+                moreIndicator.innerHTML = `... e altri ${totalItems - 5} articoli`;
+                homeShoppingList.appendChild(moreIndicator);
+            }
+        }
+
+        function updateStats() {
+            const todayTasks = appState.todayTasks;
+            const allTasks = appState.tasks;
+            const shoppingItems = appState.shoppingList;
+            const completedToday = todayTasks.filter(t => t.completed).length;
+            const totalTasks = allTasks.length;
+
+            document.getElementById('todayTasksCount').textContent = todayTasks.length;
+            document.getElementById('completedTodayCount').textContent = completedToday;
+            document.getElementById('totalTasksCount').textContent = totalTasks;
+            document.getElementById('shoppingItemsCount').textContent = shoppingItems.length;
+
+            const progress = todayTasks.length > 0 ? (completedToday / todayTasks.length) * 100 : 0;
+            document.getElementById('todayProgress').style.width = progress + '%';
+        }
+
+        function showAddToTodayModal() {
+            const availableTasks = appState.tasks.filter(task =>
+                !task.completed && !appState.todayTasks.find(t => t.id === task.id)
+            );
+
+            if (availableTasks.length === 0) {
+                showNotification('📝 Nessuna faccenda disponibile da aggiungere', 'info');
+                return;
+            }
+
+            let taskOptions = availableTasks.map(task =>
+                `<div style="padding: 10px; margin: 5px 0; background: rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer;" onclick="addTaskToToday(${task.id}); this.parentElement.parentElement.remove();">
+                    ${task.text} <span style="opacity: 0.7;">(${task.difficulty})</span>
+                </div>`
+            ).join('');
+
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                background: rgba(0,0,0,0.7); z-index: 1000; 
+                display: flex; align-items: center; justify-content: center; padding: 20px;
+            `;
+
+            modal.innerHTML = `
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                           border-radius: 15px; padding: 20px; max-width: 400px; width: 100%; 
+                           max-height: 80vh; overflow-y: auto; color: white;">
+                    <h3 style="margin-bottom: 15px;">Aggiungi a Oggi</h3>
+                    ${taskOptions}
+                    <button style="width: 100%; margin-top: 15px; padding: 10px; background: rgba(244,67,54,0.2); 
+                                   border: 1px solid rgba(244,67,54,0.3); color: #f44336; border-radius: 8px;" 
+                            onclick="this.parentElement.parentElement.remove();">Annulla</button>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.remove();
+            });
+        }
+
+        function addTaskToToday(taskId) {
+            const task = appState.tasks.find(t => t.id === taskId);
+            if (task && !appState.todayTasks.find(t => t.id === taskId)) {
+                appState.todayTasks.push({...task});
+                saveTodayTasks();
+                updateTodayTasksList();
+                updateStats();
+                showNotification('📅 Faccenda aggiunta a oggi!', 'success');
+                hapticFeedback();
+            }
+        }
+
+        function removeTaskFromToday(taskId) {
+            appState.todayTasks = appState.todayTasks.filter(t => t.id !== taskId);
+            saveTodayTasks();
+            updateTodayTasksList();
+            updateStats();
+            hapticFeedback();
+        }
+
+        function updateTodayTasksList() {
+            renderTaskList(appState.todayTasks, 'todayTasksList', true);
+        }
+
+        function saveTodayTasks() {
+            localStorage.setItem('todayTasks', JSON.stringify(appState.todayTasks));
+        }
+
+        // Backup Functions
+        function initializeBackup() {
+            updateBackupStats();
+        }
+
+        function exportData() {
+            const backupData = {
+                version: "1.0",
+                timestamp: new Date().toISOString(),
+                data: {
+                    tasks: appState.tasks,
+                    todayTasks: appState.todayTasks,
+                    shoppingList: appState.shoppingList,
+                    habits: appState.habits,
+                    settings: JSON.parse(localStorage.getItem('timerSettings') || '{}')
+                },
+                stats: {
+                    totalTasks: appState.tasks.length,
+                    totalTodayTasks: appState.todayTasks.length,
+                    totalShoppingItems: appState.shoppingList.length,
+                    totalHabits: appState.habits.length
+                }
+            };
+
+            const dataStr = JSON.stringify(backupData, null, 2);
+            const dateStr = new Date().toISOString().split('T')[0];
+            const fileName = `timer-abitudini-backup-${dateStr}.json`;
+
+            // Controllo se stiamo usando l'app Android
+            if (typeof Android !== 'undefined' && Android.saveToFile) {
+                Android.saveToFile(fileName, dataStr);
+                Android.showToast('📦 Backup salvato in: ' + fileName);
+                localStorage.setItem('lastBackupDate', new Date().toISOString());
+                updateBackupStats();
+                hapticFeedback('success');
+                showNotification('📦 Backup salvato nell\'app!', 'success');
+                return;
+            }
+
+            try {
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(dataBlob);
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setTimeout(() => URL.revokeObjectURL(link.href), 100);
+                localStorage.setItem('lastBackupDate', new Date().toISOString());
+                updateBackupStats();
+                hapticFeedback('success');
+                showNotification('📦 Backup scaricato con successo!', 'success');
+            } catch (error) {
+                console.error('Errore durante l\'esportazione:', error);
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(dataStr).then(() => {
+                        showNotification('📋 Backup copiato negli appunti! Incollalo in un file .json', 'info');
+                    }).catch(() => {
+                        showFallbackExport(dataStr, fileName);
+                    });
+                } else {
+                    showFallbackExport(dataStr, fileName);
+                }
+            }
+        }
+
+        function showFallbackExport(dataStr, fileName) {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 500px;">
+                    <div class="modal-header">💾 Backup Manuale</div>
+                    <p style="margin-bottom: 15px; opacity: 0.9;">
+                        Copia il testo sottostante e salvalo in un file chiamato <strong>${fileName}</strong>
+                    </p>
+                    <textarea readonly style="width: 100%; height: 200px; padding: 10px; border: none; border-radius: 8px; background: rgba(255,255,255,0.1); color: white; font-family: monospace; font-size: 0.8em; resize: vertical;" onclick="this.select()">${dataStr}</textarea>
+                    <div class="modal-buttons" style="margin-top: 15px;">
+                        <button class="modal-btn modal-btn-primary" onclick="selectBackupText(this)">📋 Seleziona Tutto</button>
+                        <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Chiudi</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+        }
+
+        function selectBackupText(button) {
+            const textarea = button.parentElement.parentElement.querySelector('textarea');
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+            try {
+                document.execCommand('copy');
+                showNotification('📋 Testo copiato!', 'success');
+            } catch (err) {
+                showNotification('📋 Seleziona e copia manualmente il testo', 'info');
+            }
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+                showNotification('⚠️ Seleziona un file JSON valido', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const backupData = JSON.parse(e.target.result);
+                    if (!backupData.data || !backupData.version) {
+                        throw new Error('Formato backup non valido');
+                    }
+                    selectedBackupFile = backupData;
+                    document.getElementById('importBtn').disabled = false;
+                    document.getElementById('importBtn').textContent = `🔄 Ripristina da ${file.name}`;
+                    showNotification(`📁 File "${file.name}" caricato e validato`, 'success');
+                    hapticFeedback();
+                } catch (error) {
+                    showNotification('❌ File backup non valido o corrotto', 'error');
+                    selectedBackupFile = null;
+                    document.getElementById('importBtn').disabled = true;
+                    document.getElementById('importBtn').textContent = '🔄 Ripristina Dati';
+                }
+            };
+            reader.onerror = function() {
+                showNotification('❌ Errore nella lettura del file', 'error');
+            };
+            reader.readAsText(file);
+        }
+
+        function importDataFromAndroid() {
+            if (typeof Android !== 'undefined' && Android.readFromFile) {
+                const files = ['timer-abitudini-backup.json', 'backup.json'];
+                for (let fileName of files) {
+                    const content = Android.readFromFile(fileName);
+                    if (content && content.trim()) {
+                        try {
+                            const backupData = JSON.parse(content);
+                            if (backupData.data && backupData.version) {
+                                selectedBackupFile = backupData;
+                                document.getElementById('importBtn').disabled = false;
+                                document.getElementById('importBtn').textContent = `🔄 Ripristina da ${fileName}`;
+                                showNotification(`📁 File "${fileName}" trovato!`, 'success');
+                                return;
+                            }
+                        } catch (e) {
+                            continue;
+                        }
+                    }
+                }
+                showNotification('📁 Nessun file backup trovato nell\'app', 'info');
+            } else {
+                showNotification('📱 Funzione disponibile solo nell\'app Android', 'info');
+            }
+        }
+
+        function importData() {
+            if (!selectedBackupFile) {
+                showNotification('⚠️ Seleziona prima un file di backup', 'error');
+                return;
+            }
+
+            const confirmMessage = `Ripristinare i dati dal backup?\n\n` +
+                `📊 Dati da ripristinare:\n` +
+                `• ${selectedBackupFile.stats?.totalTasks || 0} faccende\n` +
+                `• ${selectedBackupFile.stats?.totalTodayTasks || 0} faccende di oggi\n` +
+                `• ${selectedBackupFile.stats?.totalShoppingItems || 0} articoli spesa\n` +
+                `• ${selectedBackupFile.stats?.totalHabits || 0} abitudini\n\n` +
+                `⚠️ I dati attuali verranno sostituiti!`;
+
+            if (!confirm(confirmMessage)) return;
+
+            try {
+                const backupData = selectedBackupFile.data;
+                appState.tasks = backupData.tasks || [];
+                appState.todayTasks = backupData.todayTasks || [];
+                appState.shoppingList = backupData.shoppingList || [];
+                appState.habits = backupData.habits || [];
+
+                saveTasks();
+                saveTodayTasks();
+                saveShoppingList();
+                saveHabits();
+
+                if (backupData.settings) {
+                    localStorage.setItem('timerSettings', JSON.stringify(backupData.settings));
+                    loadSettings();
+                }
+
+                renderTasks();
+                updateTodayTasksList();
+                updateHomeShoppingList();
+                renderShoppingList();
+                renderHabits();
+                updateStats();
+                updateBackupStats();
+
+                selectedBackupFile = null;
+                document.getElementById('importBtn').disabled = true;
+                document.getElementById('importBtn').textContent = '🔄 Ripristina Dati';
+                document.getElementById('backupFileInput').value = '';
+
+                hapticFeedback('success');
+                showNotification('✅ Dati ripristinati con successo!', 'success');
+
+                setTimeout(() => {
+                    switchToTab('home');
+                }, 1500);
+
+            } catch (error) {
+                console.error('Errore durante il ripristino:', error);
+                showNotification('❌ Errore durante il ripristino dei dati', 'error');
+            }
+        }
+
+        function resetAllData() {
+            const confirmMessage = `⚠️ ATTENZIONE: Eliminazione Completa!\n\n` +
+                `Stai per eliminare TUTTI i dati:\n` +
+                `• ${appState.tasks.length} faccende\n` +
+                `• ${appState.todayTasks.length} faccende di oggi\n` +
+                `• ${appState.shoppingList.length} articoli spesa\n` +
+                `• ${appState.habits.length} abitudini\n` +
+                `• Tutte le impostazioni\n\n` +
+                `Questa azione è IRREVERSIBILE!\n\n` +
+                `Sei sicuro di voler continuare?`;
+
+            if (!confirm(confirmMessage)) return;
+            if (!confirm('🚨 ULTIMA CONFERMA: Eliminare TUTTI i dati?')) return;
+
+            try {
+                appState.tasks = [];
+                appState.todayTasks = [];
+                appState.shoppingList = [];
+                appState.habits = [];
+
+                localStorage.removeItem('tasks');
+                localStorage.removeItem('todayTasks');
+                localStorage.removeItem('shoppingList');
+                localStorage.removeItem('habits');
+                localStorage.removeItem('timerSettings');
+                localStorage.removeItem('lastBackupDate');
+                localStorage.removeItem('lastActiveTab');
+                localStorage.removeItem('timerState');
+
+                if (backgroundTimer) {
+                    backgroundTimer.reset();
+                }
+
+                renderTasks();
+                updateTodayTasksList();
+                updateHomeShoppingList();
+                renderShoppingList();
+                renderHabits();
+                updateStats();
+                updateBackupStats();
+
+                selectedBackupFile = null;
+                document.getElementById('importBtn').disabled = true;
+                document.getElementById('importBtn').textContent = '🔄 Ripristina Dati';
+                document.getElementById('backupFileInput').value = '';
+
+                hapticFeedback('heavy');
+                showNotification('🗑️ Tutti i dati sono stati eliminati', 'info');
+
+                setTimeout(() => {
+                    switchToTab('home');
+                }, 2000);
+
+            } catch (error) {
+                console.error('Errore durante il reset:', error);
+                showNotification('❌ Errore durante la cancellazione', 'error');
+            }
+        }
+
+        function updateBackupStats() {
+            document.getElementById('backupStatsHabits').textContent = appState.habits.length;
+            document.getElementById('backupStatsTasks').textContent = appState.tasks.length;
+            document.getElementById('backupStatsToday').textContent = appState.todayTasks.length;
+            document.getElementById('backupStatsShopping').textContent = appState.shoppingList.length;
+
+            const lastBackup = localStorage.getItem('lastBackupDate');
+            const lastBackupInfo = document.getElementById('lastBackupInfo');
+
+            if (lastBackup) {
+                const date = new Date(lastBackup);
+                const dateStr = date.toLocaleDateString('it-IT', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                lastBackupInfo.textContent = `Ultimo backup: ${dateStr}`;
+            } else {
+                lastBackupInfo.textContent = 'Nessun backup ancora creato';
+            }
+        }
+
+        // Utility Functions
+        function hapticFeedback(intensity = 'light') {
+            if ('vibrate' in navigator) {
+                const patterns = {
+                    light: [10],
+                    medium: [25],
+                    heavy: [50],
+                    success: [25, 10, 25]
+                };
+                navigator.vibrate(patterns[intensity] || patterns.light);
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type} show`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        document.body.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        function saveSettings() {
+            const settings = {
+                workTime: document.getElementById('workTime').value,
+                restTime: document.getElementById('restTime').value,
+                manualMode: backgroundTimer ? backgroundTimer.manualMode : false
+            };
+            localStorage.setItem('timerSettings', JSON.stringify(settings));
+        }
+
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem('timerSettings') || '{}');
+
+            if (settings.workTime) {
+                document.getElementById('workTime').value = settings.workTime;
+                if (backgroundTimer) {
+                    backgroundTimer.duration = settings.workTime * 60;
+                }
+            }
+
+            if (settings.restTime) {
+                document.getElementById('restTime').value = settings.restTime;
+            }
+
+            if (settings.manualMode !== undefined) {
+                document.getElementById('manualMode').checked = settings.manualMode;
+                if (backgroundTimer) {
+                    backgroundTimer.manualMode = settings.manualMode;
+                }
+            }
+
+            if (backgroundTimer) {
+                backgroundTimer.updateDisplay();
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' &&
+                document.querySelector('#timer-tab').classList.contains('active') &&
+                !document.activeElement.matches('input, textarea, select')) {
+                e.preventDefault();
+                const startBtn = document.getElementById('startBtn');
+                const pauseBtn = document.getElementById('pauseBtn');
+
+                if (!startBtn.disabled) {
+                    startTimer();
+                } else if (!pauseBtn.disabled) {
+                    pauseTimer();
+                }
+            }
+        });
+
+        // Prevent zoom on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        console.log('🎯 Timer & Abitudini PWA completo caricato!');
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -1395,32 +2981,10 @@
 
         // Initialize App
         document.addEventListener('DOMContentLoaded', () => {
-            // Piccolo delay per assicurarsi che tutto sia caricato
-            setTimeout(() => {
-                initializeApp();
-            }, 100);
+            initializeApp();
         });
 
-        // Fallback se DOMContentLoaded è già passato
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                setTimeout(() => {
-                    initializeApp();
-                }, 100);
-            });
-        } else {
-            setTimeout(() => {
-                initializeApp();
-            }, 100);
-        }
-
         function initializeApp() {
-            // Carica i dati salvati
-            loadSavedData();
-            
-            // Debug degli elementi (rimuovi in produzione)
-            debugElements();
-            
             initializePWA();
             initializeTimer();
             initializeTasks();
@@ -1431,50 +2995,4 @@
             initializeBackup();
             loadSettings();
             console.log('🎯 App inizializzata correttamente!');
-        }
-
-        // Funzione per caricare i dati salvati
-        function loadSavedData() {
-            try {
-                const savedTasks = localStorage.getItem('tasks');
-                const savedTodayTasks = localStorage.getItem('todayTasks');
-                const savedShoppingList = localStorage.getItem('shoppingList');
-                const savedHabits = localStorage.getItem('habits');
-
-                if (savedTasks) {
-                    appState.tasks = JSON.parse(savedTasks);
-                }
-                if (savedTodayTasks) {
-                    appState.todayTasks = JSON.parse(savedTodayTasks);
-                }
-                if (savedShoppingList) {
-                    appState.shoppingList = JSON.parse(savedShoppingList);
-                }
-                if (savedHabits) {
-                    appState.habits = JSON.parse(savedHabits);
-                }
-
-                console.log('📦 Dati caricati dal localStorage');
-            } catch (error) {
-                console.error('❌ Errore nel caricamento dei dati:', error);
-            }
-        }
-
-        // Funzione di debug per verificare gli elementi
-        function debugElements() {
-            const elements = [
-                'installBtn', 'dismissBtn', 'workTime', 'restTime', 'startBtn', 
-                'pauseBtn', 'switchBtn', 'resetBtn', 'manualMode', 'taskInput', 
-                'addTaskBtn', 'shoppingInput', 'addShoppingBtn', 'habitInput', 
-                'addHabitBtn', 'todayTasksList', 'homeShoppingList'
-            ];
-            
-            elements.forEach(id => {
-                const element = document.getElementById(id);
-                if (!element) {
-                    console.warn(`⚠️ Elemento mancante: ${id}`);
-                } else {
-                    console.log(`✅ Elemento trovato: ${id}`);
-                }
-            });
         }
